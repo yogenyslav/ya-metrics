@@ -2,13 +2,12 @@ package config
 
 import (
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/joho/godotenv"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
 // Server holds server configuration settings.
 type Server struct {
-	Port string `yaml:"port" env:"SERVER_PORT" envDefault:"8080"`
+	Port string `yaml:"port" env:"SERVER_PORT" env-default:"8080"`
 }
 
 type Config struct {
@@ -25,9 +24,6 @@ func MustNew(path ...string) *Config {
 	if len(path) > 0 {
 		err = cleanenv.ReadConfig(path[0], &cfg)
 	} else {
-		if err = godotenv.Load(); err != nil {
-			panic(errs.Wrap(err, "failed to load .env file"))
-		}
 		err = cleanenv.ReadEnv(&cfg)
 	}
 

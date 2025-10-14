@@ -46,5 +46,4 @@ func (h *Handler) sendError(w http.ResponseWriter, wrappedErr error) {
 	}
 
 	http.Error(w, err, statusCode)
-	return
 }
