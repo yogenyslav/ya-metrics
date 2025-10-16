@@ -19,8 +19,8 @@ type Collector struct {
 func NewCollector(pollInterval int) *Collector {
 	c := &Collector{
 		MemoryMetrics: NewMemoryMetrics(),
-		PollCount:     model.NewCounterMetric("PollCount"),
-		RandomValue:   model.NewGaugeMetric("RandomValue"),
+		PollCount:     model.NewCounterMetric("poll_count"),
+		RandomValue:   model.NewGaugeMetric("random_value"),
 		PollInterval:  pollInterval,
 	}
 

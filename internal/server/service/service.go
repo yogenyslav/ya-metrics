@@ -9,12 +9,12 @@ type metricRepo[T int64 | float64] interface {
 
 type GaugeRepo interface {
 	metricRepo[float64]
-	Set(name string, value float64)
+	Set(name string, value float64, tp string)
 }
 
 type CounterRepo interface {
 	metricRepo[int64]
-	Update(name string, delta int64)
+	Update(name string, delta int64, tp string)
 }
 
 // Service provides metric-related operations.

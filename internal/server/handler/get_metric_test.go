@@ -90,7 +90,13 @@ func TestHandler_GetMetric(t *testing.T) {
 			req.SetPathValue(metricNameParam, tt.metricName)
 
 			h.GetMetric(tt.writer, req)
-			assert.Equal(t, tt.wantCode, tt.writer.(*httptest.ResponseRecorder).Code)
+
+			resp := tt.writer.(*httptest.ResponseRecorder)
+			assert.Equal(t, tt.wantCode, resp.Code)
+
+			if tt.wantCode == http.StatusOK {
+				assert.Equal(t, "0", resp.Body.String())
+			}
 		})
 	}
 }

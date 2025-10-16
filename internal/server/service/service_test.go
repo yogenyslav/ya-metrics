@@ -23,7 +23,7 @@ type MockGaugeRepo struct {
 	MockMetricRepo[float64]
 }
 
-func (m *MockGaugeRepo) Set(name string, value float64) {
+func (m *MockGaugeRepo) Set(name string, value float64, tp string) {
 	m.Called(name, value)
 }
 
@@ -31,6 +31,6 @@ type MockCounterRepo struct {
 	MockMetricRepo[int64]
 }
 
-func (m *MockCounterRepo) Update(name string, delta int64) {
+func (m *MockCounterRepo) Update(name string, delta int64, tp string) {
 	m.Called(name, delta)
 }

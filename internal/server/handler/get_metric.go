@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
@@ -18,11 +17,5 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := json.Marshal(metric)
-	if err != nil {
-		h.sendError(w, errs.Wrap(err))
-		return
-	}
-
-	w.Write(resp)
+	w.Write([]byte(metric.Value))
 }

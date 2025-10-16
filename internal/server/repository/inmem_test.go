@@ -127,7 +127,7 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Set(tt.args.name, tt.args.value)
+						tt.r.Set(tt.args.name, tt.args.value, model.Counter)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						assert.Equal(t, tt.args.value, got.Value)
@@ -153,7 +153,7 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Set(tt.args.name, tt.args.value)
+						tt.r.Set(tt.args.name, tt.args.value, model.Gauge)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						assert.Equal(t, tt.args.value, got.Value)
@@ -202,7 +202,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Update(tt.args.name, tt.args.delta)
+						tt.r.Update(tt.args.name, tt.args.delta, model.Counter)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						expectedValue := tt.args.delta
@@ -241,7 +241,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Update(tt.args.name, tt.args.delta)
+						tt.r.Update(tt.args.name, tt.args.delta, model.Gauge)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						expectedValue := tt.args.delta
