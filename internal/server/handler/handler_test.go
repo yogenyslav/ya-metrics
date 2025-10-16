@@ -1,14 +1,36 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
+
+type MockMetricService struct {
+	mock.Mock
+}
+
+func (m *MockMetricService) UpdateMetric(ctx context.Context, metricType, metricName, metricValueRaw string) error {
+	args := m.Called(ctx, metricType, metricName, metricValueRaw)
+	return args.Error(0)
+}
+
+func (m *MockMetricService) GetMetric(ctx context.Context, metricType, metricName string) (*model.MetricsDto, bool) {
+	args := m.Called(ctx, metricType, metricName)
+	return args.Get(0).(*model.MetricsDto), args.Bool(1)
+}
+
+func (m *MockMetricService) ListMetrics(ctx context.Context) []*model.MetricsDto {
+	args := m.Called(ctx)
+	return args.Get(0).([]*model.MetricsDto)
+}
 
 func TestHandler_sendError(t *testing.T) {
 	t.Parallel()

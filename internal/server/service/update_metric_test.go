@@ -6,34 +6,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	models "github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 )
-
-type MockGaugeRepo struct {
-	mock.Mock
-}
-
-func (m *MockGaugeRepo) Get(name string) (*models.Metrics[float64], bool) {
-	args := m.Called(name)
-	return args.Get(0).(*models.Metrics[float64]), args.Bool(1)
-}
-
-func (m *MockGaugeRepo) Set(name string, value float64) {
-	m.Called(name, value)
-}
-
-type MockCounterRepo struct {
-	mock.Mock
-}
-
-func (m *MockCounterRepo) Get(name string) (*models.Metrics[int64], bool) {
-	args := m.Called(name)
-	return args.Get(0).(*models.Metrics[int64]), args.Bool(1)
-}
-
-func (m *MockCounterRepo) Update(name string, delta int64) {
-	m.Called(name, delta)
-}
 
 func TestService_UpdateMetric(t *testing.T) {
 	t.Parallel()
@@ -55,7 +29,7 @@ func TestService_UpdateMetric(t *testing.T) {
 		{
 			name: "Update existing gauge metric",
 			args: args{
-				metricType: models.Gauge,
+				metricType: model.Gauge,
 				name:       "mem_alloc",
 				rawValue:   "123.45",
 			},
@@ -64,7 +38,7 @@ func TestService_UpdateMetric(t *testing.T) {
 		{
 			name: "Update non-existing gauge metric",
 			args: args{
-				metricType: models.Gauge,
+				metricType: model.Gauge,
 				name:       "non_existing_gauge",
 				rawValue:   "67.89",
 			},
@@ -73,7 +47,7 @@ func TestService_UpdateMetric(t *testing.T) {
 		{
 			name: "Update existing counter metric",
 			args: args{
-				metricType: models.Counter,
+				metricType: model.Counter,
 				name:       "request_count",
 				rawValue:   "10",
 			},
@@ -82,7 +56,7 @@ func TestService_UpdateMetric(t *testing.T) {
 		{
 			name: "Update non-existing counter metric",
 			args: args{
-				metricType: models.Counter,
+				metricType: model.Counter,
 				name:       "non_existing_counter",
 				rawValue:   "5",
 			},
@@ -91,7 +65,7 @@ func TestService_UpdateMetric(t *testing.T) {
 		{
 			name: "Invalid gauge value",
 			args: args{
-				metricType: models.Gauge,
+				metricType: model.Gauge,
 				name:       "mem_alloc",
 				rawValue:   "invalid_float",
 			},
@@ -100,7 +74,7 @@ func TestService_UpdateMetric(t *testing.T) {
 		{
 			name: "Invalid counter value",
 			args: args{
-				metricType: models.Counter,
+				metricType: model.Counter,
 				name:       "request_count",
 				rawValue:   "invalid_int",
 			},
@@ -131,9 +105,9 @@ func TestService_UpdateMetric(t *testing.T) {
 				}
 
 				switch tt.args.metricType {
-				case models.Gauge:
+				case model.Gauge:
 					gr.On("Set", tt.args.name, mock.AnythingOfType("float64")).Return()
-				case models.Counter:
+				case model.Counter:
 					cr.On("Update", tt.args.name, mock.AnythingOfType("int64")).Return()
 				}
 

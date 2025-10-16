@@ -3,70 +3,70 @@ package collector
 import (
 	"runtime"
 
-	models "github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 )
 
 // MemoryMetrics holds various memory statistics.
 type MemoryMetrics struct {
-	Alloc         *models.Metrics[float64]
-	BuckHashSys   *models.Metrics[float64]
-	Frees         *models.Metrics[float64]
-	GCCPUFraction *models.Metrics[float64]
-	GCSys         *models.Metrics[float64]
-	HeapAlloc     *models.Metrics[float64]
-	HeapIdle      *models.Metrics[float64]
-	HeapInuse     *models.Metrics[float64]
-	HeapObjects   *models.Metrics[float64]
-	HeapReleased  *models.Metrics[float64]
-	HeapSys       *models.Metrics[float64]
-	LastGC        *models.Metrics[float64]
-	Lookups       *models.Metrics[float64]
-	MCacheInuse   *models.Metrics[float64]
-	MCacheSys     *models.Metrics[float64]
-	MSpanInuse    *models.Metrics[float64]
-	MSpanSys      *models.Metrics[float64]
-	Mallocs       *models.Metrics[float64]
-	NextGC        *models.Metrics[float64]
-	NumForcedGC   *models.Metrics[float64]
-	NumGC         *models.Metrics[float64]
-	OtherSys      *models.Metrics[float64]
-	PauseTotalNs  *models.Metrics[float64]
-	StackInuse    *models.Metrics[float64]
-	StackSys      *models.Metrics[float64]
-	Sys           *models.Metrics[float64]
-	TotalAlloc    *models.Metrics[float64]
+	Alloc         *model.Metrics[float64]
+	BuckHashSys   *model.Metrics[float64]
+	Frees         *model.Metrics[float64]
+	GCCPUFraction *model.Metrics[float64]
+	GCSys         *model.Metrics[float64]
+	HeapAlloc     *model.Metrics[float64]
+	HeapIdle      *model.Metrics[float64]
+	HeapInuse     *model.Metrics[float64]
+	HeapObjects   *model.Metrics[float64]
+	HeapReleased  *model.Metrics[float64]
+	HeapSys       *model.Metrics[float64]
+	LastGC        *model.Metrics[float64]
+	Lookups       *model.Metrics[float64]
+	MCacheInuse   *model.Metrics[float64]
+	MCacheSys     *model.Metrics[float64]
+	MSpanInuse    *model.Metrics[float64]
+	MSpanSys      *model.Metrics[float64]
+	Mallocs       *model.Metrics[float64]
+	NextGC        *model.Metrics[float64]
+	NumForcedGC   *model.Metrics[float64]
+	NumGC         *model.Metrics[float64]
+	OtherSys      *model.Metrics[float64]
+	PauseTotalNs  *model.Metrics[float64]
+	StackInuse    *model.Metrics[float64]
+	StackSys      *model.Metrics[float64]
+	Sys           *model.Metrics[float64]
+	TotalAlloc    *model.Metrics[float64]
 }
 
 // NewMemoryMetrics initializes and returns a new MemoryMetrics instance.
 func NewMemoryMetrics() *MemoryMetrics {
 	return &MemoryMetrics{
-		Alloc:         models.NewGaugeMetric("Alloc"),
-		BuckHashSys:   models.NewGaugeMetric("BuckHashSys"),
-		Frees:         models.NewGaugeMetric("Frees"),
-		GCCPUFraction: models.NewGaugeMetric("GCCPUFraction"),
-		GCSys:         models.NewGaugeMetric("GCSys"),
-		HeapAlloc:     models.NewGaugeMetric("HeapAlloc"),
-		HeapIdle:      models.NewGaugeMetric("HeapIdle"),
-		HeapInuse:     models.NewGaugeMetric("HeapInuse"),
-		HeapObjects:   models.NewGaugeMetric("HeapObjects"),
-		HeapReleased:  models.NewGaugeMetric("HeapReleased"),
-		HeapSys:       models.NewGaugeMetric("HeapSys"),
-		LastGC:        models.NewGaugeMetric("LastGC"),
-		Lookups:       models.NewGaugeMetric("Lookups"),
-		MCacheInuse:   models.NewGaugeMetric("MCacheInuse"),
-		MCacheSys:     models.NewGaugeMetric("MCacheSys"),
-		MSpanInuse:    models.NewGaugeMetric("MSpanInuse"),
-		MSpanSys:      models.NewGaugeMetric("MSpanSys"),
-		Mallocs:       models.NewGaugeMetric("Mallocs"),
-		NextGC:        models.NewGaugeMetric("NextGC"),
-		NumForcedGC:   models.NewGaugeMetric("NumForcedGC"),
-		NumGC:         models.NewGaugeMetric("NumGC"),
-		OtherSys:      models.NewGaugeMetric("OtherSys"),
-		PauseTotalNs:  models.NewGaugeMetric("PauseTotalNs"),
-		StackInuse:    models.NewGaugeMetric("StackInuse"),
-		StackSys:      models.NewGaugeMetric("StackSys"),
-		Sys:           models.NewGaugeMetric("Sys"),
-		TotalAlloc:    models.NewGaugeMetric("TotalAlloc"),
+		Alloc:         model.NewGaugeMetric("alloc"),
+		BuckHashSys:   model.NewGaugeMetric("buck_hash_sys"),
+		Frees:         model.NewGaugeMetric("frees"),
+		GCCPUFraction: model.NewGaugeMetric("gc_cpu_fraction"),
+		GCSys:         model.NewGaugeMetric("gc_sys"),
+		HeapAlloc:     model.NewGaugeMetric("heap_alloc"),
+		HeapIdle:      model.NewGaugeMetric("heap_idle"),
+		HeapInuse:     model.NewGaugeMetric("heap_inuse"),
+		HeapObjects:   model.NewGaugeMetric("heap_objects"),
+		HeapReleased:  model.NewGaugeMetric("heap_released"),
+		HeapSys:       model.NewGaugeMetric("heap_sys"),
+		LastGC:        model.NewGaugeMetric("last_gc"),
+		Lookups:       model.NewGaugeMetric("lookups"),
+		MCacheInuse:   model.NewGaugeMetric("mcache_inuse"),
+		MCacheSys:     model.NewGaugeMetric("mcache_sys"),
+		MSpanInuse:    model.NewGaugeMetric("mspan_inuse"),
+		MSpanSys:      model.NewGaugeMetric("mspan_sys"),
+		Mallocs:       model.NewGaugeMetric("mallocs"),
+		NextGC:        model.NewGaugeMetric("next_gc"),
+		NumForcedGC:   model.NewGaugeMetric("num_forced_gc"),
+		NumGC:         model.NewGaugeMetric("num_gc"),
+		OtherSys:      model.NewGaugeMetric("other_sys"),
+		PauseTotalNs:  model.NewGaugeMetric("pause_total_ns"),
+		StackInuse:    model.NewGaugeMetric("stack_inuse"),
+		StackSys:      model.NewGaugeMetric("stack_sys"),
+		Sys:           model.NewGaugeMetric("sys"),
+		TotalAlloc:    model.NewGaugeMetric("total_alloc"),
 	}
 }
 

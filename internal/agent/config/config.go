@@ -7,7 +7,7 @@ import (
 
 // Agent holds agent configuration settings.
 type Agent struct {
-	PollIntervalSec   int `yaml:"poll_interval" env:"POLL_INTERVAL" env-default:"2"`
+	PollIntervalSec   int `yaml:"poll_interval"   env:"POLL_INTERVAL"   env-default:"2"`
 	ReportIntervalSec int `yaml:"report_interval" env:"REPORT_INTERVAL" env-default:"10"`
 }
 

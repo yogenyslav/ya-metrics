@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/yogenyslav/ya-metrics/internal/agent/collector"
 	"github.com/yogenyslav/ya-metrics/internal/agent/config"
-	models "github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
@@ -56,7 +56,7 @@ func (a *Agent) Start(ctx context.Context) error {
 			case <-ticker.C:
 				err := a.sendAllMetrics(ctx, coll)
 				if err != nil {
-					log.Printf("failed to send metrics: %v\n", err)
+					slog.Error("failed to send metrics", "error", err)
 				}
 			}
 		}
@@ -70,7 +70,8 @@ func (a *Agent) Start(ctx context.Context) error {
 }
 
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
-	err := make([]error, 27)
+	err := make([]error, 0)
+
 	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Alloc, a.cfg.ServerURL, a.client))
 	err = append(err, sendMetric(ctx, coll.MemoryMetrics.BuckHashSys, a.cfg.ServerURL, a.client))
 	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Frees, a.cfg.ServerURL, a.client))
@@ -98,11 +99,13 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 	err = append(err, sendMetric(ctx, coll.MemoryMetrics.StackSys, a.cfg.ServerURL, a.client))
 	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Sys, a.cfg.ServerURL, a.client))
 	err = append(err, sendMetric(ctx, coll.MemoryMetrics.TotalAlloc, a.cfg.ServerURL, a.client))
+	err = append(err, sendMetric(ctx, coll.PollCount, a.cfg.ServerURL, a.client))
+	err = append(err, sendMetric(ctx, coll.RandomValue, a.cfg.ServerURL, a.client))
 
 	return errors.Join(err...)
 }
 
-func sendMetric[T int64 | float64](ctx context.Context, metric *models.Metrics[T], host string, client Client) error {
+func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T], host string, client Client) error {
 	req, err := http.NewRequestWithContext(
 		ctx, http.MethodPost, fmt.Sprintf(host+"/update/%s/%s/%v", metric.Type, metric.Name, metric.Value), nil,
 	)

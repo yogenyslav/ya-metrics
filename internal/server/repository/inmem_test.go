@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	models "github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 )
 
 func TestMetricInMemRepo_Get(t *testing.T) {
@@ -17,7 +17,7 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 		name       string
 		r          MetricInMemRepo[T]
 		args       args
-		wantMetric *models.Metrics[T]
+		wantMetric *model.Metrics[T]
 		wantExist  bool
 	}
 
@@ -29,17 +29,17 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 				{
 					name: "Get existing int64 metric",
 					r: MetricInMemRepo[int64]{
-						storage: map[string]*models.Metrics[int64]{
+						storage: map[string]*model.Metrics[int64]{
 							"metric1": {Name: "metric1", Value: 10},
 						},
 					},
 					args:       args{name: "metric1"},
-					wantMetric: &models.Metrics[int64]{Name: "metric1", Value: 10},
+					wantMetric: &model.Metrics[int64]{Name: "metric1", Value: 10},
 					wantExist:  true,
 				},
 				{
 					name:       "Get non-existing int64 metric",
-					r:          MetricInMemRepo[int64]{storage: make(map[string]*models.Metrics[int64])},
+					r:          MetricInMemRepo[int64]{storage: make(map[string]*model.Metrics[int64])},
 					args:       args{name: "metric2"},
 					wantMetric: nil,
 					wantExist:  false,
@@ -67,17 +67,17 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 				{
 					name: "Get existing float64 metric",
 					r: MetricInMemRepo[float64]{
-						storage: map[string]*models.Metrics[float64]{
+						storage: map[string]*model.Metrics[float64]{
 							"metric1": {Name: "metric1", Value: 10.5},
 						},
 					},
 					args:       args{name: "metric1"},
-					wantMetric: &models.Metrics[float64]{Name: "metric1", Value: 10.5},
+					wantMetric: &model.Metrics[float64]{Name: "metric1", Value: 10.5},
 					wantExist:  true,
 				},
 				{
 					name:       "Get non-existing float64 metric",
-					r:          MetricInMemRepo[float64]{storage: make(map[string]*models.Metrics[float64])},
+					r:          MetricInMemRepo[float64]{storage: make(map[string]*model.Metrics[float64])},
 					args:       args{name: "metric2"},
 					wantMetric: nil,
 					wantExist:  false,
@@ -118,7 +118,7 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 			tests := []testCase[int64]{
 				{
 					name: "Set int64 metric",
-					r:    MetricInMemRepo[int64]{storage: make(map[string]*models.Metrics[int64])},
+					r:    MetricInMemRepo[int64]{storage: make(map[string]*model.Metrics[int64])},
 					args: args[int64]{name: "metric1", value: 10},
 				},
 			}
@@ -127,7 +127,7 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Set(tt.args.name, tt.args.value)
+						tt.r.Set(tt.args.name, tt.args.value, model.Counter)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						assert.Equal(t, tt.args.value, got.Value)
@@ -144,7 +144,7 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 			tests := []testCase[float64]{
 				{
 					name: "Set float64 metric",
-					r:    MetricInMemRepo[float64]{storage: make(map[string]*models.Metrics[float64])},
+					r:    MetricInMemRepo[float64]{storage: make(map[string]*model.Metrics[float64])},
 					args: args[float64]{name: "metric1", value: 10.5},
 				},
 			}
@@ -153,7 +153,7 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Set(tt.args.name, tt.args.value)
+						tt.r.Set(tt.args.name, tt.args.value, model.Gauge)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						assert.Equal(t, tt.args.value, got.Value)
@@ -185,7 +185,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				{
 					name: "Update existing int64 metric",
 					r: MetricInMemRepo[int64]{
-						storage: map[string]*models.Metrics[int64]{
+						storage: map[string]*model.Metrics[int64]{
 							"metric1": {Name: "metric1", Value: 10},
 						},
 					},
@@ -193,7 +193,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				},
 				{
 					name: "Update non-existing int64 metric",
-					r:    MetricInMemRepo[int64]{storage: make(map[string]*models.Metrics[int64])},
+					r:    MetricInMemRepo[int64]{storage: make(map[string]*model.Metrics[int64])},
 					args: args[int64]{name: "metric2", delta: 7},
 				},
 			}
@@ -202,7 +202,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Update(tt.args.name, tt.args.delta)
+						tt.r.Update(tt.args.name, tt.args.delta, model.Counter)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						expectedValue := tt.args.delta
@@ -224,7 +224,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				{
 					name: "Update existing float64 metric",
 					r: MetricInMemRepo[float64]{
-						storage: map[string]*models.Metrics[float64]{
+						storage: map[string]*model.Metrics[float64]{
 							"metric1": {Name: "metric1", Value: 10.5},
 						},
 					},
@@ -232,7 +232,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				},
 				{
 					name: "Update non-existing float64 metric",
-					r:    MetricInMemRepo[float64]{storage: make(map[string]*models.Metrics[float64])},
+					r:    MetricInMemRepo[float64]{storage: make(map[string]*model.Metrics[float64])},
 					args: args[float64]{name: "metric2", delta: 7.3},
 				},
 			}
@@ -241,7 +241,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Update(tt.args.name, tt.args.delta)
+						tt.r.Update(tt.args.name, tt.args.delta, model.Gauge)
 						got, exists := tt.r.Get(tt.args.name)
 						assert.True(t, exists)
 						expectedValue := tt.args.delta
@@ -271,7 +271,7 @@ func TestNewMetricInMemRepo(t *testing.T) {
 			tests := []testCase[int64]{
 				{
 					name: "Create new int64 MetricInMemRepo",
-					want: &MetricInMemRepo[int64]{storage: make(map[string]*models.Metrics[int64])},
+					want: &MetricInMemRepo[int64]{storage: make(map[string]*model.Metrics[int64])},
 				},
 			}
 
@@ -294,7 +294,7 @@ func TestNewMetricInMemRepo(t *testing.T) {
 			tests := []testCase[float64]{
 				{
 					name: "Create new float64 MetricInMemRepo",
-					want: &MetricInMemRepo[float64]{storage: make(map[string]*models.Metrics[float64])},
+					want: &MetricInMemRepo[float64]{storage: make(map[string]*model.Metrics[float64])},
 				},
 			}
 
@@ -304,6 +304,90 @@ func TestNewMetricInMemRepo(t *testing.T) {
 						t.Parallel()
 						repo := NewMetricInMemRepo[float64]()
 						assert.Equal(t, *tt.want, *repo)
+					},
+				)
+			}
+		},
+	)
+}
+
+func TestMetricInMemRepo_List(t *testing.T) {
+	t.Parallel()
+
+	type testCase[T interface{ int64 | float64 }] struct {
+		name string
+		r    MetricInMemRepo[T]
+		want []model.Metrics[T]
+	}
+
+	t.Run(
+		"int64", func(t *testing.T) {
+			t.Parallel()
+
+			tests := []testCase[int64]{
+				{
+					name: "List int64 metrics",
+					r: MetricInMemRepo[int64]{
+						storage: map[string]*model.Metrics[int64]{
+							"metric1": {Name: "metric1", Value: 10},
+							"metric2": {Name: "metric2", Value: 20},
+						},
+					},
+					want: []model.Metrics[int64]{
+						{Name: "metric1", Value: 10},
+						{Name: "metric2", Value: 20},
+					},
+				},
+				{
+					name: "List from empty int64 repo",
+					r:    MetricInMemRepo[int64]{storage: make(map[string]*model.Metrics[int64])},
+					want: []model.Metrics[int64]{},
+				},
+			}
+
+			for _, tt := range tests {
+				t.Run(
+					tt.name, func(t *testing.T) {
+						t.Parallel()
+						metrics := tt.r.List()
+						assert.ElementsMatch(t, tt.want, metrics)
+					},
+				)
+			}
+		},
+	)
+
+	t.Run(
+		"float64", func(t *testing.T) {
+			t.Parallel()
+
+			tests := []testCase[float64]{
+				{
+					name: "List float64 metrics",
+					r: MetricInMemRepo[float64]{
+						storage: map[string]*model.Metrics[float64]{
+							"metric1": {Name: "metric1", Value: 10.5},
+							"metric2": {Name: "metric2", Value: 20.3},
+						},
+					},
+					want: []model.Metrics[float64]{
+						{Name: "metric1", Value: 10.5},
+						{Name: "metric2", Value: 20.3},
+					},
+				},
+				{
+					name: "List from empty float64 repo",
+					r:    MetricInMemRepo[float64]{storage: make(map[string]*model.Metrics[float64])},
+					want: []model.Metrics[float64]{},
+				},
+			}
+
+			for _, tt := range tests {
+				t.Run(
+					tt.name, func(t *testing.T) {
+						t.Parallel()
+						metrics := tt.r.List()
+						assert.ElementsMatch(t, tt.want, metrics)
 					},
 				)
 			}
