@@ -13,7 +13,7 @@ import (
 
 	"github.com/yogenyslav/ya-metrics/internal/agent/collector"
 	"github.com/yogenyslav/ya-metrics/internal/agent/config"
-	models "github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
@@ -102,7 +102,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 	return errors.Join(err...)
 }
 
-func sendMetric[T int64 | float64](ctx context.Context, metric *models.Metrics[T], host string, client Client) error {
+func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T], host string, client Client) error {
 	req, err := http.NewRequestWithContext(
 		ctx, http.MethodPost, fmt.Sprintf(host+"/update/%s/%s/%v", metric.Type, metric.Name, metric.Value), nil,
 	)

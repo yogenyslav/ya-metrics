@@ -10,4 +10,5 @@ var errStatusCodes = map[error]int{
 	errs.ErrInvalidMetricType:  http.StatusBadRequest,
 	errs.ErrInvalidMetricValue: http.StatusBadRequest,
 	errs.ErrNoMetricName:       http.StatusNotFound,
+	errs.ErrMetricNotFound:     http.StatusNotFound,
 }

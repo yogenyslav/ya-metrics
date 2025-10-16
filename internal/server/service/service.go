@@ -1,11 +1,10 @@
 package service
 
-import (
-	models "github.com/yogenyslav/ya-metrics/internal/model"
-)
+import "github.com/yogenyslav/ya-metrics/internal/model"
 
 type metricRepo[T int64 | float64] interface {
-	Get(name string) (*models.Metrics[T], bool)
+	Get(name string) (*model.Metrics[T], bool)
+	List() []model.Metrics[T]
 }
 
 type GaugeRepo interface {

@@ -38,3 +38,20 @@ build-agent:
 build-server:
 	@echo "building server"
 	@go build -o cmd/server/server cmd/server/main.go
+
+.PHONY: run-agent
+run-agent:
+	@echo "running agent"
+	@go run cmd/agent/main.go
+
+.PHONY: run-server
+run-server:
+	@echo "running server"
+	@go run cmd/server/main.go
+
+.PHONY: test
+test:
+	@echo "running tests"
+	@go test ./... -coverprofile=coverage.out
+	@go tool cover -func=coverage.out | grep total
+	@rm -f coverage.out

@@ -1,66 +1,76 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
-
-type MockMetricService struct {
-	mock.Mock
-}
-
-func (m *MockMetricService) UpdateMetric(ctx context.Context, metricType, metricName, metricValueRaw string) error {
-	args := m.Called(ctx, metricType, metricName, metricValueRaw)
-	return args.Error(0)
-}
 
 func TestHandler_UpdateMetric(t *testing.T) {
 	t.Parallel()
 
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
 	tests := []struct {
-		name     string
-		args     args
-		wantCode int
+		name        string
+		ms          metricService
+		metricType  string
+		metrictName string
+		metricValue string
+		writer      http.ResponseWriter
+		wantCode    int
 	}{
 		{
 			name: "UpdateMetric with valid parameters",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: httptest.NewRequest("POST", "/update/gauge/metric1/123.45", nil).WithContext(context.Background()),
-			},
-			wantCode: http.StatusOK,
+			ms: func() metricService {
+				m := new(MockMetricService)
+				m.On("UpdateMetric", mock.Anything, "gauge", "metric1", "123.45").
+					Return(nil)
+				return m
+			}(),
+			metricType:  "gauge",
+			metrictName: "metric1",
+			metricValue: "123.45",
+			writer:      httptest.NewRecorder(),
+			wantCode:    http.StatusOK,
 		},
 		{
-			name: "UpdateMetric with missing metric name",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: httptest.NewRequest("POST", "/update/gauge//123.45", nil).WithContext(context.Background()),
-			},
-			wantCode: http.StatusNotFound,
+			name:        "UpdateMetric with missing metric name",
+			ms:          new(MockMetricService),
+			metricType:  "gauge",
+			metricValue: "123.45",
+			writer:      httptest.NewRecorder(),
+			wantCode:    http.StatusNotFound,
 		},
 		{
 			name: "UpdateMetric with invalid metric type",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: httptest.NewRequest("POST", "/update/invalid/metric1/123.45", nil).WithContext(context.Background()),
-			},
-			wantCode: http.StatusBadRequest,
+			ms: func() metricService {
+				m := new(MockMetricService)
+				m.On("UpdateMetric", mock.Anything, "invalid", "metric1", "123.45").
+					Return(errs.ErrInvalidMetricType)
+				return m
+			}(),
+			metricType:  "invalid",
+			metrictName: "metric1",
+			metricValue: "123.45",
+			writer:      httptest.NewRecorder(),
+			wantCode:    http.StatusBadRequest,
 		},
 		{
 			name: "UpdateMetric with invalid metric value",
-			args: args{
-				w: httptest.NewRecorder(),
-				r: httptest.NewRequest("POST", "/update/gauge/metric1/invalid", nil).WithContext(context.Background()),
-			},
-			wantCode: http.StatusBadRequest,
+			ms: func() metricService {
+				m := new(MockMetricService)
+				m.On("UpdateMetric", mock.Anything, "gauge", "metric1", "invalid").
+					Return(errs.ErrInvalidMetricValue)
+				return m
+			}(),
+			metricType:  "gauge",
+			metrictName: "metric1",
+			metricValue: "invalid",
+			writer:      httptest.NewRecorder(),
+			wantCode:    http.StatusBadRequest,
 		},
 	}
 
@@ -69,16 +79,19 @@ func TestHandler_UpdateMetric(t *testing.T) {
 			tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				ms := &MockMetricService{}
-				h := &Handler{
-					ms: ms,
-				}
+				h := NewHandler(tt.ms)
 
-				if tt.wantCode == http.StatusOK {
-					ms.On("UpdateMetric", mock.Anything, "gauge", "metric1", "123.45").Return(nil).Once()
-				}
+				req := httptest.NewRequest(
+					http.MethodPost,
+					"/update/{"+metricTypeParam+"}/{"+metricNameParam+"}/{"+metricValueParam+"}",
+					nil,
+				)
+				req.SetPathValue(metricTypeParam, tt.metricType)
+				req.SetPathValue(metricNameParam, tt.metrictName)
+				req.SetPathValue(metricValueParam, tt.metricValue)
 
-				h.UpdateMetric(tt.args.w, tt.args.r)
+				h.UpdateMetric(tt.writer, req)
+				assert.Equal(t, tt.wantCode, tt.writer.(*httptest.ResponseRecorder).Code)
 			},
 		)
 	}

@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
-	models "github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 )
 
 // Collector struct to collect metrics.
 type Collector struct {
 	MemoryMetrics *MemoryMetrics
-	PollCount     *models.Metrics[int64]
-	RandomValue   *models.Metrics[float64]
+	PollCount     *model.Metrics[int64]
+	RandomValue   *model.Metrics[float64]
 	PollInterval  int
 }
 
@@ -19,8 +19,8 @@ type Collector struct {
 func NewCollector(pollInterval int) *Collector {
 	c := &Collector{
 		MemoryMetrics: NewMemoryMetrics(),
-		PollCount:     models.NewCounterMetric("PollCount"),
-		RandomValue:   models.NewGaugeMetric("RandomValue"),
+		PollCount:     model.NewCounterMetric("PollCount"),
+		RandomValue:   model.NewGaugeMetric("RandomValue"),
 		PollInterval:  pollInterval,
 	}
 

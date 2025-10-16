@@ -1,13 +1,14 @@
 package server
 
 import (
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/yogenyslav/ya-metrics/internal/server/config"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
@@ -16,15 +17,18 @@ import (
 
 // Server serves HTTP requests.
 type Server struct {
-	mux *http.ServeMux
-	cfg *config.Config
+	router chi.Router
+	cfg    *config.Config
 }
 
 // NewServer creates new HTTP server.
 func NewServer(cfg *config.Config) *Server {
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+
 	return &Server{
-		mux: http.NewServeMux(),
-		cfg: cfg,
+		router: router,
+		cfg:    cfg,
 	}
 }
 
@@ -36,7 +40,7 @@ func (s *Server) Start() error {
 	metricService := service.NewService(gaugeRepo, counterRepo)
 
 	h := handler.NewHandler(metricService)
-	h.RegisterRoutes(s.mux)
+	h.RegisterRoutes(s.router)
 
 	go s.listen()
 
@@ -49,8 +53,7 @@ func (s *Server) Start() error {
 
 func (s *Server) listen() {
 	addr := net.JoinHostPort("", s.cfg.Server.Port)
-	log.Println("starting server at", addr)
-	if err := http.ListenAndServe(addr, s.mux); err != nil {
+	if err := http.ListenAndServe(addr, s.router); err != nil {
 		panic(err)
 	}
 }

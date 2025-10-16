@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-// 400
+// 400.
 var (
 	// ErrInvalidMetricType is an error when invalid metric type is provided.
 	ErrInvalidMetricType = errors.New("invalid metric type")
@@ -12,8 +12,10 @@ var (
 	ErrInvalidMetricValue = errors.New("invalid metric value")
 )
 
-// 404
+// 404.
 var (
 	// ErrNoMetricName is an error when no metric name is provided.
 	ErrNoMetricName = errors.New("no metric name provided")
+	// ErrMetricNotFound is an error when the requested metric is not found.
+	ErrMetricNotFound = errors.New("metric not found")
 )
