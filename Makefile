@@ -32,7 +32,7 @@ update-autotests:
 .PHONY: build-agent
 build-agent:
 	@echo "building agent"
-	@go build -o cmd/server/agent cmd/agent/main.go
+	@go build -o cmd/agent/agent cmd/agent/main.go
 
 .PHONY: build-server
 build-server:

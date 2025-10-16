@@ -10,6 +10,7 @@ type Server struct {
 	Port string `yaml:"port" env:"SERVER_PORT" env-default:"8080"`
 }
 
+// Config holds the overall application configuration.
 type Config struct {
 	Server Server `yaml:"server"`
 }

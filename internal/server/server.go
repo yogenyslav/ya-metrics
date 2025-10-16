@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yogenyslav/ya-metrics/internal/config"
-	"github.com/yogenyslav/ya-metrics/internal/handler"
-	"github.com/yogenyslav/ya-metrics/internal/repository"
-	"github.com/yogenyslav/ya-metrics/internal/service"
+	"github.com/yogenyslav/ya-metrics/internal/server/config"
+	"github.com/yogenyslav/ya-metrics/internal/server/handler"
+	"github.com/yogenyslav/ya-metrics/internal/server/repository"
+	"github.com/yogenyslav/ya-metrics/internal/server/service"
 )
 
 // Server serves HTTP requests.
