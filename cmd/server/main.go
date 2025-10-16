@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/yogenyslav/ya-metrics/internal/config"
 	"github.com/yogenyslav/ya-metrics/internal/server"
+	"github.com/yogenyslav/ya-metrics/internal/server/config"
 )
 
 func main() {

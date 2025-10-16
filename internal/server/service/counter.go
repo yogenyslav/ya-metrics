@@ -6,6 +6,6 @@ import (
 
 // UpdateCounter updates the counter metric by the given delta.
 func (s *Service) UpdateCounter(_ context.Context, name string, delta int64) error {
-	s.counterRepo.Update(name, delta)
+	s.cr.Update(name, delta)
 	return nil
 }

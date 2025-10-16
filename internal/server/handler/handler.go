@@ -34,6 +34,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (h *Handler) sendError(w http.ResponseWriter, wrappedErr error) {
+	if wrappedErr == nil {
+		return
+	}
+
 	statusCode := http.StatusInternalServerError
 	err := wrappedErr.Error()
 
