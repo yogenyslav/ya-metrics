@@ -2,12 +2,24 @@ package main
 
 import (
 	"github.com/yogenyslav/ya-metrics/internal/server"
-	"github.com/yogenyslav/ya-metrics/internal/server/config"
 )
 
 func main() {
-	srv := server.NewServer(config.MustNew())
-	if err := srv.Start(); err != nil {
+	if err := run(); err != nil {
 		panic(err)
 	}
+}
+
+func run() error {
+	srv, err := server.NewServer()
+	if err != nil {
+		return err
+	}
+
+	err = srv.Start()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,9 +13,14 @@ import (
 	"time"
 
 	"github.com/yogenyslav/ya-metrics/internal/agent/collector"
-	"github.com/yogenyslav/ya-metrics/internal/agent/config"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
+)
+
+const (
+	defaultServerAddr     = "http://localhost:8080"
+	defaultPollInterval   = 2
+	defaultReportInterval = 10
 )
 
 // ErrUpdateMetric indicates a failure to update a metric.
@@ -27,24 +33,38 @@ type Client interface {
 
 // Agent struct to collect and send metrics to server.
 type Agent struct {
-	cfg    *config.Config
-	client Client
+	client            Client
+	serverAddr        string
+	pollIntervalSec   int
+	reportIntervalSec int
 }
 
 // New creates a new Agent instance.
-func New(cfg *config.Config, client Client) *Agent {
-	return &Agent{
-		cfg:    cfg,
-		client: client,
+func New(client Client) (*Agent, error) {
+	flags := flag.NewFlagSet("agent", flag.ExitOnError)
+	serverAddrFlag := flags.String("a", defaultServerAddr, "адрес сервера в формате ip:port")
+	pollIntervalFlag := flags.Int("p", defaultPollInterval, "интервал опроса метрик, сек.")
+	reportIntervalFlag := flags.Int("r", defaultReportInterval, "интервал отправки метрик на сервер, сек. ")
+
+	err := flags.Parse(os.Args[1:])
+	if err != nil {
+		return nil, errs.Wrap(err, "parse flags")
 	}
+
+	return &Agent{
+		client:            client,
+		serverAddr:        *serverAddrFlag,
+		pollIntervalSec:   *pollIntervalFlag,
+		reportIntervalSec: *reportIntervalFlag,
+	}, nil
 }
 
 // Start begins the metric collection and reporting process.
 func (a *Agent) Start(ctx context.Context) error {
-	coll := collector.NewCollector(a.cfg.Agent.PollIntervalSec)
+	coll := collector.NewCollector(a.pollIntervalSec)
 
 	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(a.cfg.Agent.ReportIntervalSec))
+		ticker := time.NewTicker(time.Second * time.Duration(a.reportIntervalSec))
 		defer ticker.Stop()
 
 		coll.Collect(ctx)
@@ -72,35 +92,35 @@ func (a *Agent) Start(ctx context.Context) error {
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
 	err := make([]error, 0)
 
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Alloc, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.BuckHashSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Frees, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.GCCPUFraction, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.GCSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapAlloc, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapIdle, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapObjects, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapReleased, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.LastGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Lookups, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MCacheInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MCacheSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MSpanInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MSpanSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Mallocs, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NextGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NumForcedGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NumGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.OtherSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.PauseTotalNs, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.StackInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.StackSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Sys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.TotalAlloc, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.PollCount, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.RandomValue, a.cfg.ServerURL, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Alloc, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.BuckHashSys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Frees, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.GCCPUFraction, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.GCSys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapAlloc, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapIdle, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapInuse, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapObjects, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapReleased, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapSys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.LastGC, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Lookups, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MCacheInuse, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MCacheSys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MSpanInuse, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MSpanSys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Mallocs, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NextGC, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NumForcedGC, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NumGC, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.OtherSys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.PauseTotalNs, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.StackInuse, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.StackSys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Sys, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.MemoryMetrics.TotalAlloc, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.PollCount, a.serverAddr, a.client))
+	err = append(err, sendMetric(ctx, coll.RandomValue, a.serverAddr, a.client))
 
 	return errors.Join(err...)
 }
