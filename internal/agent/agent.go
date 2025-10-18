@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 )
 
 const (
-	defaultServerAddr     = "http://localhost:8080"
+	defaultServerAddr     = "localhost:8080"
 	defaultPollInterval   = 2
 	defaultReportInterval = 10
 )
@@ -51,9 +52,14 @@ func New(client Client) (*Agent, error) {
 		return nil, errs.Wrap(err, "parse flags")
 	}
 
+	serverAddr := *serverAddrFlag
+	if !strings.HasPrefix(serverAddr, "http://") && !strings.HasPrefix(serverAddr, "https://") {
+		serverAddr = "http://" + serverAddr
+	}
+
 	return &Agent{
 		client:            client,
-		serverAddr:        *serverAddrFlag,
+		serverAddr:        serverAddr,
 		pollIntervalSec:   *pollIntervalFlag,
 		reportIntervalSec: *reportIntervalFlag,
 	}, nil

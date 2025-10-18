@@ -15,7 +15,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
-const defaultServerAddr string = ":8080"
+const defaultServerAddr string = "localhost:8080"
 
 // Server serves HTTP requests.
 type Server struct {
