@@ -1,7 +1,6 @@
 package server
 
 import (
-	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,36 +8,26 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/yogenyslav/ya-metrics/internal/config"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
 	"github.com/yogenyslav/ya-metrics/internal/server/service"
-	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
-
-const defaultServerAddr string = "localhost:8080"
 
 // Server serves HTTP requests.
 type Server struct {
 	router chi.Router
-	addr   string
+	cfg    *config.Config
 }
 
 // NewServer creates new HTTP server.
-func NewServer() (*Server, error) {
+func NewServer(cfg *config.Config) (*Server, error) {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
-	flags := flag.NewFlagSet("server", flag.ExitOnError)
-	addrFlag := flags.String("a", defaultServerAddr, "адрес сервера в формате ip:port")
-
-	err := flags.Parse(os.Args[1:])
-	if err != nil {
-		return nil, errs.Wrap(err, "parse flags")
-	}
-
 	return &Server{
 		router: router,
-		addr:   *addrFlag,
+		cfg:    cfg,
 	}, nil
 }
 
@@ -62,7 +51,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) listen() {
-	if err := http.ListenAndServe(s.addr, s.router); err != nil {
+	if err := http.ListenAndServe(s.cfg.Addr, s.router); err != nil {
 		panic(err)
 	}
 }
