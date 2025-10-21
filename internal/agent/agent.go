@@ -32,11 +32,11 @@ type Agent struct {
 }
 
 // New creates a new Agent instance.
-func New(client Client, cfg *config.Config) (*Agent, error) {
+func New(client Client, cfg *config.Config) *Agent {
 	return &Agent{
 		client: client,
 		cfg:    cfg,
-	}, nil
+	}
 }
 
 // Start begins the metric collection and reporting process.

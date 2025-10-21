@@ -20,10 +20,7 @@ func run() error {
 		return err
 	}
 
-	a, err := agent.New(http.DefaultClient, cfg)
-	if err != nil {
-		return err
-	}
+	a := agent.New(http.DefaultClient, cfg)
 
 	err = a.Start()
 	if err != nil {

@@ -21,14 +21,14 @@ type Server struct {
 }
 
 // NewServer creates new HTTP server.
-func NewServer(cfg *config.Config) (*Server, error) {
+func NewServer(cfg *config.Config) *Server {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
 	return &Server{
 		router: router,
 		cfg:    cfg,
-	}, nil
+	}
 }
 
 // Start starts the HTTP server.

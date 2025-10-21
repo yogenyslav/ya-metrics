@@ -19,10 +19,7 @@ func run() error {
 		return err
 	}
 
-	srv, err := server.NewServer(cfg)
-	if err != nil {
-		return err
-	}
+	srv := server.NewServer(cfg)
 
 	err = srv.Start()
 	if err != nil {
