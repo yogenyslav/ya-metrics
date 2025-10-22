@@ -1,38 +1,46 @@
 package config
 
 import (
-	"github.com/ilyakaznacheev/cleanenv"
+	"flag"
+	"os"
+	"strings"
+
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
-// Agent holds agent configuration settings.
-type Agent struct {
-	PollIntervalSec   int `yaml:"poll_interval"   env:"POLL_INTERVAL"   env-default:"2"`
-	ReportIntervalSec int `yaml:"report_interval" env:"REPORT_INTERVAL" env-default:"10"`
-}
+const (
+	defaultServerAddr     = "localhost:8080"
+	defaultPollInterval   = 2
+	defaultReportInterval = 10
+)
 
-// Config holds the overall application configuration.
+// Config holds the configuration settings for the agent.
 type Config struct {
-	Agent     Agent  `yaml:"agent"`
-	ServerURL string `yaml:"server_url" env:"SERVER_URL" env-default:"http://localhost:8080"`
+	ServerAddr        string
+	PollIntervalSec   int
+	ReportIntervalSec int
 }
 
-// MustNew creates a new Config or panics.
-func MustNew(path ...string) *Config {
-	var (
-		err error
-		cfg Config
-	)
+// NewConfig creates a new Config with cli args or default values.
+func NewConfig() (*Config, error) {
+	flags := flag.NewFlagSet("agent", flag.ExitOnError)
+	serverAddrFlag := flags.String("a", defaultServerAddr, "адрес сервера в формате ip:port")
+	pollIntervalFlag := flags.Int("p", defaultPollInterval, "интервал опроса метрик, сек.")
+	reportIntervalFlag := flags.Int("r", defaultReportInterval, "интервал отправки метрик на сервер, сек. ")
 
-	if len(path) > 0 {
-		err = cleanenv.ReadConfig(path[0], &cfg)
-	} else {
-		err = cleanenv.ReadEnv(&cfg)
-	}
-
+	err := flags.Parse(os.Args[1:])
 	if err != nil {
-		panic(errs.Wrap(err, "failed to load config"))
+		return nil, errs.Wrap(err, "parse flags")
 	}
 
-	return &cfg
+	serverAddr := *serverAddrFlag
+	if !strings.HasPrefix(serverAddr, "http://") && !strings.HasPrefix(serverAddr, "https://") {
+		serverAddr = "http://" + serverAddr
+	}
+
+	return &Config{
+		ServerAddr:        serverAddr,
+		PollIntervalSec:   *pollIntervalFlag,
+		ReportIntervalSec: *reportIntervalFlag,
+	}, nil
 }

@@ -27,24 +27,27 @@ type Client interface {
 
 // Agent struct to collect and send metrics to server.
 type Agent struct {
-	cfg    *config.Config
 	client Client
+	cfg    *config.Config
 }
 
 // New creates a new Agent instance.
-func New(cfg *config.Config, client Client) *Agent {
+func New(client Client, cfg *config.Config) *Agent {
 	return &Agent{
-		cfg:    cfg,
 		client: client,
+		cfg:    cfg,
 	}
 }
 
 // Start begins the metric collection and reporting process.
-func (a *Agent) Start(ctx context.Context) error {
-	coll := collector.NewCollector(a.cfg.Agent.PollIntervalSec)
+func (a *Agent) Start() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	coll := collector.NewCollector(a.cfg.PollIntervalSec)
 
 	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(a.cfg.Agent.ReportIntervalSec))
+		ticker := time.NewTicker(time.Second * time.Duration(a.cfg.ReportIntervalSec))
 		defer ticker.Stop()
 
 		coll.Collect(ctx)
@@ -72,35 +75,19 @@ func (a *Agent) Start(ctx context.Context) error {
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
 	err := make([]error, 0)
 
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Alloc, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.BuckHashSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Frees, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.GCCPUFraction, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.GCSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapAlloc, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapIdle, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapObjects, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapReleased, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.HeapSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.LastGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Lookups, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MCacheInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MCacheSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MSpanInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.MSpanSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Mallocs, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NextGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NumForcedGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.NumGC, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.OtherSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.PauseTotalNs, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.StackInuse, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.StackSys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.Sys, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.MemoryMetrics.TotalAlloc, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.PollCount, a.cfg.ServerURL, a.client))
-	err = append(err, sendMetric(ctx, coll.RandomValue, a.cfg.ServerURL, a.client))
+	gaugeMetrics := coll.GetAllGaugeMetrics()
+	for _, metric := range gaugeMetrics {
+		sendErr := sendMetric(ctx, metric, a.cfg.ServerAddr, a.client)
+		if sendErr != nil {
+			err = append(err, sendErr)
+		}
+	}
+
+	counterMetric := coll.PollCount
+	sendErr := sendMetric(ctx, counterMetric, a.cfg.ServerAddr, a.client)
+	if sendErr != nil {
+		err = append(err, sendErr)
+	}
 
 	return errors.Join(err...)
 }

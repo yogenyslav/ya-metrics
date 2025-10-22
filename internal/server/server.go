@@ -1,7 +1,6 @@
 package server
 
 import (
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/yogenyslav/ya-metrics/internal/server/config"
+	"github.com/yogenyslav/ya-metrics/internal/config"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
 	"github.com/yogenyslav/ya-metrics/internal/server/service"
@@ -52,8 +51,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) listen() {
-	addr := net.JoinHostPort("", s.cfg.Server.Port)
-	if err := http.ListenAndServe(addr, s.router); err != nil {
+	if err := http.ListenAndServe(s.cfg.Addr, s.router); err != nil {
 		panic(err)
 	}
 }

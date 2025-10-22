@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"log"
 	"net/http"
 
 	"github.com/yogenyslav/ya-metrics/internal/agent"
@@ -9,14 +9,23 @@ import (
 )
 
 func main() {
-	cfg := config.MustNew()
-	a := agent.New(cfg, http.DefaultClient)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err := a.Start(ctx)
-	if err != nil {
-		panic(err)
+	if err := run(); err != nil {
+		log.Fatal(err)
 	}
+}
+
+func run() error {
+	cfg, err := config.NewConfig()
+	if err != nil {
+		return err
+	}
+
+	a := agent.New(http.DefaultClient, cfg)
+
+	err = a.Start()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
