@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
@@ -33,14 +34,14 @@ func NewConfig() (*Config, error) {
 		return nil, errs.Wrap(err, "parse flags")
 	}
 
-	serverAddr := *serverAddrFlag
+	serverAddr := pkg.GetEnv("ADDRESS", *serverAddrFlag)
 	if !strings.HasPrefix(serverAddr, "http://") && !strings.HasPrefix(serverAddr, "https://") {
 		serverAddr = "http://" + serverAddr
 	}
 
 	return &Config{
 		ServerAddr:        serverAddr,
-		PollIntervalSec:   *pollIntervalFlag,
-		ReportIntervalSec: *reportIntervalFlag,
+		PollIntervalSec:   pkg.GetEnv("POLL_INTERVAL", *pollIntervalFlag),
+		ReportIntervalSec: pkg.GetEnv("REPORT_INTERVAL", *reportIntervalFlag),
 	}, nil
 }

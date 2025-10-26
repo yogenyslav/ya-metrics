@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 
+	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
@@ -25,6 +26,6 @@ func NewConfig() (*Config, error) {
 	}
 
 	return &Config{
-		Addr: *addrFlag,
+		Addr: pkg.GetEnv("ADDRESS", *addrFlag),
 	}, nil
 }
