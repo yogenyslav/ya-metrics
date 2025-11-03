@@ -79,7 +79,7 @@ func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T]
 	}
 
 	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost, host+"/update", bytes.NewReader(body),
+		ctx, http.MethodPost, host+"/update/", bytes.NewReader(body),
 	)
 	if err != nil {
 		return errs.Wrap(err, "create request")

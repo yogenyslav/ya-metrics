@@ -39,7 +39,7 @@ func (h *Handler) RegisterRoutes(router chi.Router) {
 	router.Post("/value/", h.GetMetricJSON)
 	router.Get("/value/{metricType}/{metricName}", h.GetMetricRaw)
 	router.Post(
-		"/update",
+		"/update/",
 		h.UpdateMetricJSON,
 	)
 	router.Post(
