@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg"
 )
 
 func TestService_GetMetric(t *testing.T) {
@@ -14,35 +15,42 @@ func TestService_GetMetric(t *testing.T) {
 	tests := []struct {
 		name       string
 		metricType string
-		metricName string
+		metricID string
 		wantMetric *model.MetricsDto
 		wantExists bool
 	}{
 		{
 			name:       "Get existing gauge metric",
 			metricType: model.Gauge,
-			metricName: "mem_alloc",
-			wantMetric: &model.MetricsDto{Name: "mem_alloc", Type: model.Gauge, Value: "0"},
+			metricID: "mem_alloc",
+			wantMetric: &model.MetricsDto{ID: "mem_alloc", Type: model.Gauge, Value: pkg.Ptr(0.0)},
 			wantExists: true,
 		},
 		{
 			name:       "Get non-existing gauge metric",
 			metricType: model.Gauge,
-			metricName: "non_existing_gauge",
+			metricID: "non_existing_gauge",
 			wantMetric: nil,
 			wantExists: false,
 		},
 		{
 			name:       "Get existing counter metric",
 			metricType: model.Counter,
-			metricName: "request_count",
-			wantMetric: &model.MetricsDto{Name: "request_count", Type: model.Counter, Value: "0"},
+			metricID: "request_count",
+			wantMetric: &model.MetricsDto{ID: "request_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
 			wantExists: true,
 		},
 		{
 			name:       "Get non-existing counter metric",
 			metricType: model.Counter,
-			metricName: "non_existing_counter",
+			metricID: "non_existing_counter",
+			wantMetric: nil,
+			wantExists: false,
+		},
+		{
+			name:       "Get metric with invalid type",
+			metricType: "invalid_type",
+			metricID: "some_metric",
 			wantMetric: nil,
 			wantExists: false,
 		},
@@ -56,15 +64,15 @@ func TestService_GetMetric(t *testing.T) {
 			cr := &MockCounterRepo{}
 
 			if tt.wantMetric != nil {
-				gr.On("Get", tt.metricName).Return(model.NewGaugeMetric(tt.wantMetric.Name), tt.wantExists)
-				cr.On("Get", tt.metricName).Return(model.NewCounterMetric(tt.wantMetric.Name), tt.wantExists)
+				gr.On("Get", tt.metricID).Return(model.NewGaugeMetric(tt.wantMetric.ID), tt.wantExists)
+				cr.On("Get", tt.metricID).Return(model.NewCounterMetric(tt.wantMetric.ID), tt.wantExists)
 			} else {
-				gr.On("Get", tt.metricName).Return((*model.Metrics[float64])(nil), tt.wantExists)
-				cr.On("Get", tt.metricName).Return((*model.Metrics[int64])(nil), tt.wantExists)
+				gr.On("Get", tt.metricID).Return((*model.Metrics[float64])(nil), tt.wantExists)
+				cr.On("Get", tt.metricID).Return((*model.Metrics[int64])(nil), tt.wantExists)
 			}
 
 			s := NewService(gr, cr)
-			metric, exists := s.GetMetric(context.Background(), tt.metricType, tt.metricName)
+			metric, exists := s.GetMetric(context.Background(), tt.metricType, tt.metricID)
 			assert.Equal(t, tt.wantMetric, metric)
 			assert.Equal(t, tt.wantExists, exists)
 		})

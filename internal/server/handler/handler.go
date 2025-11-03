@@ -11,13 +11,13 @@ import (
 
 const (
 	metricTypeParam  = "metricType"
-	metricNameParam  = "metricName"
+	metricIDParam    = "metricID"
 	metricValueParam = "metricValue"
 )
 
 type metricService interface {
-	UpdateMetric(ctx context.Context, metricType, name, rawValue string) error
-	GetMetric(ctx context.Context, metricType, metricName string) (*model.MetricsDto, bool)
+	UpdateMetric(ctx context.Context, metricType, metricID, rawValue string) error
+	GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, bool)
 	ListMetrics(ctx context.Context) []*model.MetricsDto
 }
 
@@ -35,9 +35,17 @@ func NewHandler(ms metricService) *Handler {
 
 // RegisterRoutes registers HTTP routes.
 func (h *Handler) RegisterRoutes(router chi.Router) {
-	router.HandleFunc("GET /", h.ListMetrics)
-	router.HandleFunc("GET /value/{metricType}/{metricName}", h.GetMetric)
-	router.HandleFunc("POST /update/{metricType}/{metricName}/{metricValue}", h.UpdateMetric)
+	router.Get("/", h.ListMetrics)
+	router.Post("/value/", h.GetMetricJSON)
+	router.Get("/value/{metricType}/{metricID}", h.GetMetricRaw)
+	router.Post(
+		"/update/",
+		h.UpdateMetricJSON,
+	)
+	router.Post(
+		"/update/{metricType}/{metricID}/{metricValue}",
+		h.UpdateMetricRaw,
+	)
 }
 
 func (h *Handler) sendError(w http.ResponseWriter, wrappedErr error) {

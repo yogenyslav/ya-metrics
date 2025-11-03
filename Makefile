@@ -14,6 +14,7 @@ get-autotests-arm64:
 .PHONY: run-autotests
 
 ITER := `git rev-parse --abbrev-ref HEAD | grep -o '[0-9]\+'`
+ITER_BRANCH := ^TestIteration$(ITER)$
 
 run-autotests:
 	@echo "running autotests for iteration $(ITER)"
@@ -21,7 +22,7 @@ run-autotests:
 		echo "autotests binary not found, downloading..."; \
 		$(MAKE) get-autotests-arm64; \
 	fi
-	@$(AUTOTESTS_BINARY) -test.v -test.run=^TestIteration$(ITER)$ -binary-path=./cmd/server/server -agent-binary-path=./cmd/server/agent
+	$(AUTOTESTS_BINARY) -test.v -test.run=$(ITER_BRANCH) -binary-path=./cmd/server/server -agent-binary-path=./cmd/agent/agent -source-path=.
 
 .PHONY: update-autotests
 update-autotests:

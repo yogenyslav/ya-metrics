@@ -14,8 +14,14 @@ var (
 
 // 404.
 var (
-	// ErrNoMetricName is an error when no metric name is provided.
-	ErrNoMetricName = errors.New("no metric name provided")
+	// ErrNoMetricID is an error when no metric name is provided.
+	ErrNoMetricID = errors.New("no metric name provided")
 	// ErrMetricNotFound is an error when the requested metric is not found.
 	ErrMetricNotFound = errors.New("metric not found")
+)
+
+// 422.
+var (
+	// ErrInvalidJSON is an error when the provided JSON is invalid.
+	ErrInvalidJSON = errors.New("invalid JSON")
 )
