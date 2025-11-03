@@ -30,11 +30,11 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 					name: "Get existing int64 metric",
 					r: MetricInMemRepo[int64]{
 						storage: map[string]*model.Metrics[int64]{
-							"metric1": {Name: "metric1", Value: 10},
+							"metric1": {ID: "metric1", Value: 10},
 						},
 					},
 					args:       args{name: "metric1"},
-					wantMetric: &model.Metrics[int64]{Name: "metric1", Value: 10},
+					wantMetric: &model.Metrics[int64]{ID: "metric1", Value: 10},
 					wantExist:  true,
 				},
 				{
@@ -68,11 +68,11 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 					name: "Get existing float64 metric",
 					r: MetricInMemRepo[float64]{
 						storage: map[string]*model.Metrics[float64]{
-							"metric1": {Name: "metric1", Value: 10.5},
+							"metric1": {ID: "metric1", Value: 10.5},
 						},
 					},
 					args:       args{name: "metric1"},
-					wantMetric: &model.Metrics[float64]{Name: "metric1", Value: 10.5},
+					wantMetric: &model.Metrics[float64]{ID: "metric1", Value: 10.5},
 					wantExist:  true,
 				},
 				{
@@ -186,7 +186,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 					name: "Update existing int64 metric",
 					r: MetricInMemRepo[int64]{
 						storage: map[string]*model.Metrics[int64]{
-							"metric1": {Name: "metric1", Value: 10},
+							"metric1": {ID: "metric1", Value: 10},
 						},
 					},
 					args: args[int64]{name: "metric1", delta: 5},
@@ -225,7 +225,7 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 					name: "Update existing float64 metric",
 					r: MetricInMemRepo[float64]{
 						storage: map[string]*model.Metrics[float64]{
-							"metric1": {Name: "metric1", Value: 10.5},
+							"metric1": {ID: "metric1", Value: 10.5},
 						},
 					},
 					args: args[float64]{name: "metric1", delta: 5.5},
@@ -329,13 +329,13 @@ func TestMetricInMemRepo_List(t *testing.T) {
 					name: "List int64 metrics",
 					r: MetricInMemRepo[int64]{
 						storage: map[string]*model.Metrics[int64]{
-							"metric1": {Name: "metric1", Value: 10},
-							"metric2": {Name: "metric2", Value: 20},
+							"metric1": {ID: "metric1", Value: 10},
+							"metric2": {ID: "metric2", Value: 20},
 						},
 					},
 					want: []model.Metrics[int64]{
-						{Name: "metric1", Value: 10},
-						{Name: "metric2", Value: 20},
+						{ID: "metric1", Value: 10},
+						{ID: "metric2", Value: 20},
 					},
 				},
 				{
@@ -366,13 +366,13 @@ func TestMetricInMemRepo_List(t *testing.T) {
 					name: "List float64 metrics",
 					r: MetricInMemRepo[float64]{
 						storage: map[string]*model.Metrics[float64]{
-							"metric1": {Name: "metric1", Value: 10.5},
-							"metric2": {Name: "metric2", Value: 20.3},
+							"metric1": {ID: "metric1", Value: 10.5},
+							"metric2": {ID: "metric2", Value: 20.3},
 						},
 					},
 					want: []model.Metrics[float64]{
-						{Name: "metric1", Value: 10.5},
-						{Name: "metric2", Value: 20.3},
+						{ID: "metric1", Value: 10.5},
+						{ID: "metric2", Value: 20.3},
 					},
 				},
 				{

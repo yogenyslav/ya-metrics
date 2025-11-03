@@ -13,15 +13,15 @@ import (
 // UpdateMetricRaw handles raw metric update requests.
 func (h *Handler) UpdateMetricRaw(w http.ResponseWriter, r *http.Request) {
 	metricType := r.PathValue(metricTypeParam)
-	metricName := r.PathValue(metricNameParam)
+	metricID := r.PathValue(metricIDParam)
 	metricValueRaw := r.PathValue(metricValueParam)
 
-	if metricName == "" {
-		h.sendError(w, errs.Wrap(errs.ErrNoMetricName))
+	if metricID == "" {
+		h.sendError(w, errs.Wrap(errs.ErrNoMetricID))
 		return
 	}
 
-	if err := h.ms.UpdateMetric(r.Context(), metricType, metricName, metricValueRaw); err != nil {
+	if err := h.ms.UpdateMetric(r.Context(), metricType, metricID, metricValueRaw); err != nil {
 		h.sendError(w, errs.Wrap(err))
 		return
 	}
@@ -44,8 +44,8 @@ func (h *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Name == "" {
-		h.sendError(w, errs.Wrap(errs.ErrNoMetricName))
+	if req.ID == "" {
+		h.sendError(w, errs.Wrap(errs.ErrNoMetricID))
 		return
 	}
 
@@ -57,7 +57,7 @@ func (h *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		metricRawValue = strconv.FormatInt(*req.Delta, 10)
 	}
 
-	if err := h.ms.UpdateMetric(r.Context(), req.Type, req.Name, metricRawValue); err != nil {
+	if err := h.ms.UpdateMetric(r.Context(), req.Type, req.ID, metricRawValue); err != nil {
 		h.sendError(w, errs.Wrap(err))
 		return
 	}

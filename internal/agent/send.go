@@ -96,7 +96,7 @@ func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T]
 	if resp.StatusCode != http.StatusOK {
 		return errs.Wrap(
 			ErrUpdateMetric, fmt.Sprintf(
-				"metric '%s' of type '%s' with value '%v' not updated, status code: %d", metric.Name, metric.Type,
+				"metric '%s' of type '%s' with value '%v' not updated, status code: %d", metric.ID, metric.Type,
 				metric.Value, resp.StatusCode,
 			),
 		)

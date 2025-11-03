@@ -17,13 +17,13 @@ type MockMetricService struct {
 	mock.Mock
 }
 
-func (m *MockMetricService) UpdateMetric(ctx context.Context, metricType, metricName, metricValueRaw string) error {
-	args := m.Called(ctx, metricType, metricName, metricValueRaw)
+func (m *MockMetricService) UpdateMetric(ctx context.Context, metricType, metricID, metricValueRaw string) error {
+	args := m.Called(ctx, metricType, metricID, metricValueRaw)
 	return args.Error(0)
 }
 
-func (m *MockMetricService) GetMetric(ctx context.Context, metricType, metricName string) (*model.MetricsDto, bool) {
-	args := m.Called(ctx, metricType, metricName)
+func (m *MockMetricService) GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, bool) {
+	args := m.Called(ctx, metricType, metricID)
 	return args.Get(0).(*model.MetricsDto), args.Bool(1)
 }
 

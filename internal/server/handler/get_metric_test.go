@@ -21,7 +21,7 @@ func TestHandler_GetMetric(t *testing.T) {
 		name       string
 		ms         func() metricService
 		metricType string
-		metricName string
+		metricID string
 		wantCode   int
 	}{
 		{
@@ -33,7 +33,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Gauge,
-			metricName: "metric1",
+			metricID: "metric1",
 			wantCode:   http.StatusOK,
 		},
 		{
@@ -45,7 +45,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Counter,
-			metricName: "metric1",
+			metricID: "metric1",
 			wantCode:   http.StatusOK,
 		},
 		{
@@ -57,7 +57,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Gauge,
-			metricName: "non_existing_metric",
+			metricID: "non_existing_metric",
 			wantCode:   http.StatusNotFound,
 		},
 		{
@@ -69,7 +69,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: "invalid",
-			metricName: "metric1",
+			metricID: "metric1",
 			wantCode:   http.StatusNotFound,
 		},
 		{
@@ -81,7 +81,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Gauge,
-			metricName: "",
+			metricID: "",
 			wantCode:   http.StatusNotFound,
 		},
 	}
@@ -98,11 +98,11 @@ func TestHandler_GetMetric(t *testing.T) {
 
 				req := httptest.NewRequest(
 					http.MethodGet,
-					"/value/{"+metricTypeParam+"}/{"+metricNameParam+"}",
+					"/value/{"+metricTypeParam+"}/{"+metricIDParam+"}",
 					nil,
 				)
 				req.SetPathValue(metricTypeParam, tt.metricType)
-				req.SetPathValue(metricNameParam, tt.metricName)
+				req.SetPathValue(metricIDParam, tt.metricID)
 
 				h.GetMetricRaw(writer, req)
 				assert.Equal(t, tt.wantCode, writer.Code)
@@ -120,7 +120,7 @@ func TestHandler_GetMetric(t *testing.T) {
 
 				data := model.MetricsDto{
 					Type: tt.metricType,
-					Name: tt.metricName,
+					ID: tt.metricID,
 				}
 				body, err := json.Marshal(data)
 				require.NoError(t, err)
@@ -138,13 +138,13 @@ func TestHandler_GetMetric(t *testing.T) {
 				switch tt.metricType {
 				case model.Gauge:
 					want = model.MetricsDto{
-						Name:  tt.metricName,
+						ID:  tt.metricID,
 						Type:  model.Gauge,
 						Value: pkg.Ptr(0.0),
 					}
 				case model.Counter:
 					want = model.MetricsDto{
-						Name:  tt.metricName,
+						ID:  tt.metricID,
 						Type:  model.Counter,
 						Delta: pkg.Ptr[int64](0),
 					}

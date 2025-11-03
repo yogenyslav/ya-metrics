@@ -31,10 +31,10 @@ func TestService_ListMetrics(t *testing.T) {
 				*model.NewCounterMetric("error_count"),
 			},
 			want: []*model.MetricsDto{
-				{Name: "mem_alloc", Type: model.Gauge, Value: pkg.Ptr(0.0)},
-				{Name: "cpu_usage", Type: model.Gauge, Value: pkg.Ptr(0.0)},
-				{Name: "request_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
-				{Name: "error_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
+				{ID: "mem_alloc", Type: model.Gauge, Value: pkg.Ptr(0.0)},
+				{ID: "cpu_usage", Type: model.Gauge, Value: pkg.Ptr(0.0)},
+				{ID: "request_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
+				{ID: "error_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
 			},
 		},
 		{

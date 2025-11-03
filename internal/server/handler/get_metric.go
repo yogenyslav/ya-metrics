@@ -13,9 +13,9 @@ import (
 // GetMetricRaw handles raw metric retrieval requests.
 func (h *Handler) GetMetricRaw(w http.ResponseWriter, r *http.Request) {
 	metricType := r.PathValue(metricTypeParam)
-	metricName := r.PathValue(metricNameParam)
+	metricID := r.PathValue(metricIDParam)
 
-	metric, found := h.ms.GetMetric(r.Context(), metricType, metricName)
+	metric, found := h.ms.GetMetric(r.Context(), metricType, metricID)
 	if !found {
 		h.sendError(w, errs.Wrap(errs.ErrMetricNotFound))
 		return
@@ -46,14 +46,14 @@ func (h *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metric, found := h.ms.GetMetric(r.Context(), req.Type, req.Name)
+	metric, found := h.ms.GetMetric(r.Context(), req.Type, req.ID)
 	if !found {
 		h.sendError(w, errs.Wrap(errs.ErrMetricNotFound))
 		return
 	}
 
 	resp := model.MetricsDto{
-		Name:  metric.Name,
+		ID:  metric.ID,
 		Type:  metric.Type,
 		Value: metric.Value,
 		Delta: metric.Delta,
@@ -66,5 +66,6 @@ func (h *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	w.Write(respBody)
 }

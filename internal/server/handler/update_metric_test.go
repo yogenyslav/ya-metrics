@@ -100,12 +100,12 @@ func TestHandler_UpdateMetric(t *testing.T) {
 					writer := httptest.NewRecorder()
 					req := httptest.NewRequest(
 						http.MethodPost,
-						"/update/{"+metricTypeParam+"}/{"+metricNameParam+"}/{"+metricValueParam+"}",
+						"/update/{"+metricTypeParam+"}/{"+metricIDParam+"}/{"+metricValueParam+"}",
 						nil,
 					)
 					req.Header.Set("Content-Type", "text/plain")
 					req.SetPathValue(metricTypeParam, tt.metricType)
-					req.SetPathValue(metricNameParam, tt.metrictName)
+					req.SetPathValue(metricIDParam, tt.metrictName)
 					req.SetPathValue(metricValueParam, tt.metricValue)
 
 					h.UpdateMetricRaw(writer, req)
@@ -119,7 +119,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 
 					data := model.MetricsDto{
 						Type: tt.metricType,
-						Name: tt.metrictName,
+						ID: tt.metrictName,
 					}
 					switch tt.metricType {
 					case model.Gauge:

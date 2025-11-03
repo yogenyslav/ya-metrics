@@ -8,23 +8,23 @@ const (
 
 // Metrics represents a metric with its properties.
 type Metrics[T int64 | float64] struct {
-	Name  string `json:"name"`
+	ID    string `json:"id"`
 	Type  string `json:"type"`
 	Value T      `json:"value"`
 }
 
 // NewGaugeMetric creates a new gauge metric.
-func NewGaugeMetric(name string) *Metrics[float64] {
+func NewGaugeMetric(id string) *Metrics[float64] {
 	return &Metrics[float64]{
-		Name: name,
+		ID:   id,
 		Type: Gauge,
 	}
 }
 
 // NewCounterMetric creates a new counter metric.
-func NewCounterMetric(name string) *Metrics[int64] {
+func NewCounterMetric(id string) *Metrics[int64] {
 	return &Metrics[int64]{
-		Name: name,
+		ID:   id,
 		Type: Counter,
 	}
 }
@@ -32,7 +32,7 @@ func NewCounterMetric(name string) *Metrics[int64] {
 // ToDto converts Metrics to MetricsDto.
 func (m *Metrics[T]) ToDto() *MetricsDto {
 	metric := &MetricsDto{
-		Name: m.Name,
+		ID:   m.ID,
 		Type: m.Type,
 	}
 
@@ -48,7 +48,7 @@ func (m *Metrics[T]) ToDto() *MetricsDto {
 
 // MetricsDto is a struct for transferring metric data.
 type MetricsDto struct {
-	Name  string   `json:"name"`
+	ID    string   `json:"id"`
 	Type  string   `json:"type"`
 	Value *float64 `json:"value,omitempty"`
 	Delta *int64   `json:"delta,omitempty"`
