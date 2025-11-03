@@ -7,9 +7,10 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog"
 	"github.com/yogenyslav/ya-metrics/internal/config"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
+	"github.com/yogenyslav/ya-metrics/internal/server/middleware"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
 	"github.com/yogenyslav/ya-metrics/internal/server/service"
 )
@@ -21,9 +22,9 @@ type Server struct {
 }
 
 // NewServer creates new HTTP server.
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config, l *zerolog.Logger) *Server {
 	router := chi.NewRouter()
-	router.Use(middleware.Logger)
+	router.Use(middleware.WithLogging(l))
 
 	return &Server{
 		router: router,
