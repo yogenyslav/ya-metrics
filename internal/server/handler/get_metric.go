@@ -1,13 +1,17 @@
 package handler
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
+	"strconv"
 
+	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
-// GetMetric handles metric retrieval requests.
-func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
+// GetMetricRaw handles raw metric retrieval requests.
+func (h *Handler) GetMetricRaw(w http.ResponseWriter, r *http.Request) {
 	metricType := r.PathValue(metricTypeParam)
 	metricName := r.PathValue(metricNameParam)
 
@@ -17,5 +21,50 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(metric.Value))
+	var value string
+	if metricType == model.Gauge {
+		value = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
+	} else {
+		value = strconv.FormatInt(*metric.Delta, 10)
+	}
+
+	w.Write([]byte(value))
+}
+
+// GetMetricJSON handles JSON metric retrieval requests.
+func (h *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
+	var req model.MetricsDto
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		h.sendError(w, errs.Wrap(err))
+		return
+	}
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		h.sendError(w, errs.Wrap(errs.ErrInvalidJSON, err.Error()))
+		return
+	}
+
+	metric, found := h.ms.GetMetric(r.Context(), req.Type, req.Name)
+	if !found {
+		h.sendError(w, errs.Wrap(errs.ErrMetricNotFound))
+		return
+	}
+
+	resp := model.MetricsDto{
+		Name:  metric.Name,
+		Type:  metric.Type,
+		Value: metric.Value,
+		Delta: metric.Delta,
+	}
+
+	respBody, err := json.Marshal(resp)
+	if err != nil {
+		h.sendError(w, errs.Wrap(err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(respBody)
 }

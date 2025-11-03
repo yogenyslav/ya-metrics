@@ -36,8 +36,16 @@ func NewHandler(ms metricService) *Handler {
 // RegisterRoutes registers HTTP routes.
 func (h *Handler) RegisterRoutes(router chi.Router) {
 	router.HandleFunc("GET /", h.ListMetrics)
-	router.HandleFunc("GET /value/{metricType}/{metricName}", h.GetMetric)
-	router.HandleFunc("POST /update/{metricType}/{metricName}/{metricValue}", h.UpdateMetric)
+	router.HandleFunc("POST /value", h.GetMetricJSON)
+	router.HandleFunc("GET /value/{metricType}/{metricName}", h.GetMetricRaw)
+	router.HandleFunc(
+		"POST /update",
+		h.UpdateMetricJSON,
+	)
+	router.HandleFunc(
+		"POST /update/{metricType}/{metricName}/{metricValue}",
+		h.UpdateMetricRaw,
+	)
 }
 
 func (h *Handler) sendError(w http.ResponseWriter, wrappedErr error) {

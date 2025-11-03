@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg"
 )
 
 func TestService_GetMetric(t *testing.T) {
@@ -22,7 +23,7 @@ func TestService_GetMetric(t *testing.T) {
 			name:       "Get existing gauge metric",
 			metricType: model.Gauge,
 			metricName: "mem_alloc",
-			wantMetric: &model.MetricsDto{Name: "mem_alloc", Type: model.Gauge, Value: "0"},
+			wantMetric: &model.MetricsDto{Name: "mem_alloc", Type: model.Gauge, Value: pkg.Ptr(0.0)},
 			wantExists: true,
 		},
 		{
@@ -36,13 +37,20 @@ func TestService_GetMetric(t *testing.T) {
 			name:       "Get existing counter metric",
 			metricType: model.Counter,
 			metricName: "request_count",
-			wantMetric: &model.MetricsDto{Name: "request_count", Type: model.Counter, Value: "0"},
+			wantMetric: &model.MetricsDto{Name: "request_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
 			wantExists: true,
 		},
 		{
 			name:       "Get non-existing counter metric",
 			metricType: model.Counter,
 			metricName: "non_existing_counter",
+			wantMetric: nil,
+			wantExists: false,
+		},
+		{
+			name:       "Get metric with invalid type",
+			metricType: "invalid_type",
+			metricName: "some_metric",
 			wantMetric: nil,
 			wantExists: false,
 		},
