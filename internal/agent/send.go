@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -78,14 +79,21 @@ func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T]
 		return errs.Wrap(err, "marshal metric")
 	}
 
+	buf := &bytes.Buffer{}
+	gz := gzip.NewWriter(buf)
+	gz.Write(body)
+	gz.Close()
+
 	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost, host+"/update/", bytes.NewReader(body),
+		ctx, http.MethodPost, host+"/update/", buf,
 	)
 	if err != nil {
 		return errs.Wrap(err, "create request")
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("Content-Encoding", "gzip")
 
 	resp, err := client.Do(req)
 	if err != nil {

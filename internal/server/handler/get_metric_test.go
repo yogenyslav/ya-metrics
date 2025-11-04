@@ -21,7 +21,7 @@ func TestHandler_GetMetric(t *testing.T) {
 		name       string
 		ms         func() metricService
 		metricType string
-		metricID string
+		metricID   string
 		wantCode   int
 	}{
 		{
@@ -33,7 +33,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Gauge,
-			metricID: "metric1",
+			metricID:   "metric1",
 			wantCode:   http.StatusOK,
 		},
 		{
@@ -45,7 +45,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Counter,
-			metricID: "metric1",
+			metricID:   "metric1",
 			wantCode:   http.StatusOK,
 		},
 		{
@@ -57,7 +57,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Gauge,
-			metricID: "non_existing_metric",
+			metricID:   "non_existing_metric",
 			wantCode:   http.StatusNotFound,
 		},
 		{
@@ -69,7 +69,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: "invalid",
-			metricID: "metric1",
+			metricID:   "metric1",
 			wantCode:   http.StatusNotFound,
 		},
 		{
@@ -81,7 +81,7 @@ func TestHandler_GetMetric(t *testing.T) {
 				return m
 			},
 			metricType: model.Gauge,
-			metricID: "",
+			metricID:   "",
 			wantCode:   http.StatusNotFound,
 		},
 	}
@@ -120,7 +120,7 @@ func TestHandler_GetMetric(t *testing.T) {
 
 				data := model.MetricsDto{
 					Type: tt.metricType,
-					ID: tt.metricID,
+					ID:   tt.metricID,
 				}
 				body, err := json.Marshal(data)
 				require.NoError(t, err)
@@ -138,13 +138,13 @@ func TestHandler_GetMetric(t *testing.T) {
 				switch tt.metricType {
 				case model.Gauge:
 					want = model.MetricsDto{
-						ID:  tt.metricID,
+						ID:    tt.metricID,
 						Type:  model.Gauge,
 						Value: pkg.Ptr(0.0),
 					}
 				case model.Counter:
 					want = model.MetricsDto{
-						ID:  tt.metricID,
+						ID:    tt.metricID,
 						Type:  model.Counter,
 						Delta: pkg.Ptr[int64](0),
 					}

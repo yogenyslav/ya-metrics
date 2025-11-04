@@ -28,6 +28,7 @@ func (h *Handler) GetMetricRaw(w http.ResponseWriter, r *http.Request) {
 		value = strconv.FormatInt(*metric.Delta, 10)
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(value))
 }
 
@@ -53,7 +54,7 @@ func (h *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := model.MetricsDto{
-		ID:  metric.ID,
+		ID:    metric.ID,
 		Type:  metric.Type,
 		Value: metric.Value,
 		Delta: metric.Delta,
