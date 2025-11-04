@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg"
+	"github.com/yogenyslav/ya-metrics/tests/mocks"
 )
 
 func TestService_GetMetric(t *testing.T) {
@@ -60,8 +61,8 @@ func TestService_GetMetric(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gr := &MockGaugeRepo{}
-			cr := &MockCounterRepo{}
+			gr := &mocks.MockGaugeRepo{}
+			cr := &mocks.MockCounterRepo{}
 
 			if tt.wantMetric != nil {
 				gr.On("Get", tt.metricID).Return(model.NewGaugeMetric(tt.wantMetric.ID), tt.wantExists)

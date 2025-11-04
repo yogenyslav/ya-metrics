@@ -1,17 +1,38 @@
 package repository
 
-import "github.com/yogenyslav/ya-metrics/internal/model"
+import (
+	"github.com/yogenyslav/ya-metrics/internal/model"
+)
+
+// StorageState represents the in-memory storage state for metrics.
+type StorageState[T int64 | float64] map[string]*model.Metrics[T]
 
 // MetricInMemRepo is an in-memory repository for metrics.
 type MetricInMemRepo[T int64 | float64] struct {
-	storage map[string]*model.Metrics[T]
+	storage StorageState[T]
 }
 
 // NewMetricInMemRepo creates a new instance of MetricInMemRepo.
-func NewMetricInMemRepo[T int64 | float64]() *MetricInMemRepo[T] {
-	return &MetricInMemRepo[T]{
-		storage: make(map[string]*model.Metrics[T]),
+func NewMetricInMemRepo[T int64 | float64](state StorageState[T]) *MetricInMemRepo[T] {
+	var storage StorageState[T]
+	if state != nil {
+		storage = state
+	} else {
+		storage = make(StorageState[T])
 	}
+
+	return &MetricInMemRepo[T]{
+		storage: storage,
+	}
+}
+
+// GetMetrics returns all metrics in MetricsDto format.
+func (r *MetricInMemRepo[T]) GetMetrics() []*model.MetricsDto {
+	metrics := make([]*model.MetricsDto, 0, len(r.storage))
+	for _, metric := range r.storage {
+		metrics = append(metrics, metric.ToDto())
+	}
+	return metrics
 }
 
 // Get returns the value of a metric by its name and a bool flag to check if it exists.
@@ -24,9 +45,9 @@ func (r *MetricInMemRepo[T]) Get(name string) (*model.Metrics[T], bool) {
 func (r *MetricInMemRepo[T]) Set(name string, value T, tp string) {
 	if metric, ok := r.storage[name]; ok {
 		metric.Value = value
-		return
+	} else {
+		r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: value}
 	}
-	r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: value}
 }
 
 // Update updates the value of a metric by adding the delta to the current value.

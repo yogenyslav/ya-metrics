@@ -57,14 +57,14 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 
 	gaugeMetrics := coll.GetAllGaugeMetrics()
 	for _, metric := range gaugeMetrics {
-		sendErr := sendMetric(ctx, metric, a.cfg.ServerAddr, a.client)
+		sendErr := sendMetric(ctx, metric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
 		if sendErr != nil {
 			err = append(err, sendErr)
 		}
 	}
 
 	counterMetric := coll.PollCount
-	sendErr := sendMetric(ctx, counterMetric, a.cfg.ServerAddr, a.client)
+	sendErr := sendMetric(ctx, counterMetric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
 	if sendErr != nil {
 		err = append(err, sendErr)
 	}
@@ -72,7 +72,13 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 	return errors.Join(err...)
 }
 
-func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T], host string, client Client) error {
+func sendMetric[T int64 | float64](
+	ctx context.Context,
+	metric *model.Metrics[T],
+	host string,
+	client Client,
+	compressionType string,
+) error {
 	data := metric.ToDto()
 	body, err := json.Marshal(data)
 	if err != nil {
@@ -80,9 +86,14 @@ func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T]
 	}
 
 	buf := &bytes.Buffer{}
-	gz := gzip.NewWriter(buf)
-	gz.Write(body)
-	gz.Close()
+	switch compressionType {
+	case "gzip":
+		gz := gzip.NewWriter(buf)
+		gz.Write(body)
+		gz.Close()
+	default:
+		buf.Write(body)
+	}
 
 	req, err := http.NewRequestWithContext(
 		ctx, http.MethodPost, host+"/update/", buf,
@@ -92,8 +103,10 @@ func sendMetric[T int64 | float64](ctx context.Context, metric *model.Metrics[T]
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip")
-	req.Header.Set("Content-Encoding", "gzip")
+	if compressionType != "" {
+		req.Header.Set("Accept-Encoding", compressionType)
+		req.Header.Set("Content-Encoding", compressionType)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

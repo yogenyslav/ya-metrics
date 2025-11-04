@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/tests/mocks"
 )
 
 func TestService_UpdateMetric(t *testing.T) {
@@ -96,8 +97,8 @@ func TestService_UpdateMetric(t *testing.T) {
 			tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				gr := &MockGaugeRepo{}
-				cr := &MockCounterRepo{}
+				gr := &mocks.MockGaugeRepo{}
+				cr := &mocks.MockCounterRepo{}
 
 				s := Service{
 					gr: gr,

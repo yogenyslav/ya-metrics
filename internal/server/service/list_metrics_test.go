@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg"
+	"github.com/yogenyslav/ya-metrics/tests/mocks"
 )
 
 func TestService_ListMetrics(t *testing.T) {
@@ -49,8 +50,8 @@ func TestService_ListMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gr := &MockGaugeRepo{}
-			cr := &MockCounterRepo{}
+			gr := &mocks.MockGaugeRepo{}
+			cr := &mocks.MockCounterRepo{}
 
 			gr.On("List").Return(tt.gaugeMetrics)
 			cr.On("List").Return(tt.counterMetrics)
