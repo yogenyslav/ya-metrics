@@ -49,7 +49,7 @@ func (w *logResponseWriter) log(ctx context.Context, data *LogData) {
 }
 
 // WithLogging enables logging middleware for HTTP requests.
-func WithLogging(l *zerolog.Logger) func(next http.Handler) http.Handler {
+func WithLogging(l *zerolog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			writer := &logResponseWriter{

@@ -20,6 +20,7 @@ type Config struct {
 	ServerAddr        string
 	PollIntervalSec   int
 	ReportIntervalSec int
+	EnableCompress    bool
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -28,6 +29,7 @@ func NewConfig() (*Config, error) {
 	serverAddrFlag := flags.String("a", defaultServerAddr, "адрес сервера в формате ip:port")
 	pollIntervalFlag := flags.Int("p", defaultPollInterval, "интервал опроса метрик, сек.")
 	reportIntervalFlag := flags.Int("r", defaultReportInterval, "интервал отправки метрик на сервер, сек. ")
+	enableCompressFlag := flags.Bool("c", true, "включить сжатие gzip при отправке метрик на сервер")
 
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
@@ -43,5 +45,6 @@ func NewConfig() (*Config, error) {
 		ServerAddr:        serverAddr,
 		PollIntervalSec:   pkg.GetEnv("POLL_INTERVAL", *pollIntervalFlag),
 		ReportIntervalSec: pkg.GetEnv("REPORT_INTERVAL", *reportIntervalFlag),
+		EnableCompress:    pkg.GetEnv("ENABLE_COMPRESS", *enableCompressFlag),
 	}, nil
 }

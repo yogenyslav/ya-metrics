@@ -119,7 +119,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 
 					data := model.MetricsDto{
 						Type: tt.metricType,
-						ID: tt.metrictName,
+						ID:   tt.metrictName,
 					}
 					switch tt.metricType {
 					case model.Gauge:

@@ -25,6 +25,7 @@ type Server struct {
 func NewServer(cfg *config.Config, l *zerolog.Logger) *Server {
 	router := chi.NewRouter()
 	router.Use(middleware.WithLogging(l))
+	router.Use(middleware.WithCompression(middleware.GzipCompression))
 
 	return &Server{
 		router: router,

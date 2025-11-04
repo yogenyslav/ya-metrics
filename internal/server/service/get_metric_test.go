@@ -15,42 +15,42 @@ func TestService_GetMetric(t *testing.T) {
 	tests := []struct {
 		name       string
 		metricType string
-		metricID string
+		metricID   string
 		wantMetric *model.MetricsDto
 		wantExists bool
 	}{
 		{
 			name:       "Get existing gauge metric",
 			metricType: model.Gauge,
-			metricID: "mem_alloc",
+			metricID:   "mem_alloc",
 			wantMetric: &model.MetricsDto{ID: "mem_alloc", Type: model.Gauge, Value: pkg.Ptr(0.0)},
 			wantExists: true,
 		},
 		{
 			name:       "Get non-existing gauge metric",
 			metricType: model.Gauge,
-			metricID: "non_existing_gauge",
+			metricID:   "non_existing_gauge",
 			wantMetric: nil,
 			wantExists: false,
 		},
 		{
 			name:       "Get existing counter metric",
 			metricType: model.Counter,
-			metricID: "request_count",
+			metricID:   "request_count",
 			wantMetric: &model.MetricsDto{ID: "request_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
 			wantExists: true,
 		},
 		{
 			name:       "Get non-existing counter metric",
 			metricType: model.Counter,
-			metricID: "non_existing_counter",
+			metricID:   "non_existing_counter",
 			wantMetric: nil,
 			wantExists: false,
 		},
 		{
 			name:       "Get metric with invalid type",
 			metricType: "invalid_type",
-			metricID: "some_metric",
+			metricID:   "some_metric",
 			wantMetric: nil,
 			wantExists: false,
 		},
