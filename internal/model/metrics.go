@@ -53,3 +53,21 @@ type MetricsDto struct {
 	Value *float64 `json:"value,omitempty"`
 	Delta *int64   `json:"delta,omitempty"`
 }
+
+// ToGaugeMetric converts MetricsDto to a Gauge Metrics.
+func (m *MetricsDto) ToGaugeMetric() *Metrics[float64] {
+	return &Metrics[float64]{
+		ID:    m.ID,
+		Type:  Gauge,
+		Value: *m.Value,
+	}
+}
+
+// ToCounterMetric converts MetricsDto to a Counter Metrics.
+func (m *MetricsDto) ToCounterMetric() *Metrics[int64] {
+	return &Metrics[int64]{
+		ID:    m.ID,
+		Type:  Counter,
+		Value: *m.Delta,
+	}
+}

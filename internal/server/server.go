@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"os/signal"
@@ -35,8 +36,20 @@ func NewServer(cfg *config.Config, l *zerolog.Logger) *Server {
 
 // Start starts the HTTP server.
 func (s *Server) Start() error {
-	gaugeRepo := repository.NewMetricInMemRepo[float64]()
-	counterRepo := repository.NewMetricInMemRepo[int64]()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dumper := middleware.NewDumper(s.cfg.FileStoragePath, s.cfg.StoreInterval, s.cfg.Restore)
+	gaugeMetrics, counterMetrics, err := dumper.Restore()
+	if err != nil {
+		return err
+	}
+
+	gaugeRepo := repository.NewMetricInMemRepo(gaugeMetrics)
+	counterRepo := repository.NewMetricInMemRepo(counterMetrics)
+
+	dumper.Start(ctx, gaugeRepo, counterRepo)
+	s.router.Use(dumper.Middleware(gaugeRepo, counterRepo))
 
 	metricService := service.NewService(gaugeRepo, counterRepo)
 

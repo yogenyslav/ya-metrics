@@ -55,4 +55,4 @@ run-autotests: build-server build-agent
 		echo "autotests binary not found, downloading..."; \
 		$(MAKE) get-autotests-arm64; \
 	fi
-	@$(AUTOTESTS_BINARY) -test.v -test.run=$(ITER_BRANCH) -binary-path=./cmd/server/server -agent-binary-path=./cmd/agent/agent -source-path=. -server-port=8080
+	@$(AUTOTESTS_BINARY) -test.v -test.run=$(ITER_BRANCH) -binary-path=./cmd/server/server -agent-binary-path=./cmd/agent/agent -source-path=. -server-port=8080 -file-storage-path=metrics.json
