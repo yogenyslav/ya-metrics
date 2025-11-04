@@ -19,5 +19,5 @@ func (h *Handler) ListMetrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("<html><body>+" + string(resp) + "</body></html>"))
+	w.Write(resp)
 }
