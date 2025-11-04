@@ -124,12 +124,8 @@ func (d *fileDumper) Dump(gaugeRepo inMemRepo, counterRepo inMemRepo) error {
 	counterMetrics := counterRepo.GetMetrics()
 
 	v := make([]*model.MetricsDto, 0, len(gaugeMetrics)+len(counterMetrics))
-	for _, m := range gaugeMetrics {
-		v = append(v, m)
-	}
-	for _, m := range counterMetrics {
-		v = append(v, m)
-	}
+	v = append(v, gaugeMetrics...)
+	v = append(v, counterMetrics...)
 
 	f, err := os.OpenFile(d.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
