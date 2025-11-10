@@ -1,11 +1,54 @@
 package repository
 
 import (
+	"encoding/json"
+	"os"
+
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
 // StorageState represents the in-memory storage state for metrics.
 type StorageState[T int64 | float64] map[string]*model.Metrics[T]
+
+// RestoreMetrics restores metrics from the file.
+func RestoreMetrics(
+	filePath string,
+) (gaugeMetrics StorageState[float64], countMetrics StorageState[int64], err error) {
+	f, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		return nil, nil, errs.Wrap(err, "open file for restore")
+	}
+	defer f.Close()
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, nil, errs.Wrap(err, "read data from file")
+	}
+
+	if len(data) == 0 {
+		return nil, nil, nil
+	}
+
+	var v []*model.MetricsDto
+	err = json.Unmarshal(data, &v)
+	if err != nil {
+		return nil, nil, errs.Wrap(err, "unmarshal data")
+	}
+
+	gaugeMetrics = make(StorageState[float64])
+	countMetrics = make(StorageState[int64])
+	for _, m := range v {
+		switch m.Type {
+		case model.Gauge:
+			gaugeMetrics[m.ID] = m.ToGaugeMetric()
+		case model.Counter:
+			countMetrics[m.ID] = m.ToCounterMetric()
+		}
+	}
+
+	return gaugeMetrics, countMetrics, nil
+}
 
 // MetricInMemRepo is an in-memory repository for metrics.
 type MetricInMemRepo[T int64 | float64] struct {

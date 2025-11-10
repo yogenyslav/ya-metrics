@@ -4,12 +4,14 @@ import (
 	"os"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/yogenyslav/ya-metrics/internal/config"
 	"github.com/yogenyslav/ya-metrics/internal/server"
 )
 
 func main() {
 	if err := run(); err != nil {
+		log.Fatal().Err(err).Msg("server failed")
 		os.Exit(1)
 	}
 }
@@ -20,7 +22,7 @@ func run() error {
 		return err
 	}
 
-	logLevel, err := zerolog.ParseLevel(cfg.LogLevel)
+	logLevel, err := zerolog.ParseLevel(cfg.Server.LogLevel)
 	if err != nil {
 		return err
 	}

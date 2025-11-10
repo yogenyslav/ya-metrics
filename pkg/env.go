@@ -15,14 +15,16 @@ func GetEnv[T envParams](key string, defaultVal T) T {
 	if !ok {
 		return defaultVal
 	}
+	return parseEnv[T](value)
+}
 
+func parseEnv[T envParams](value string) T {
 	var result T
-	switch any(defaultVal).(type) {
+
+	switch any(result).(type) {
 	case string:
 		result = any(value).(T)
-	case int:
-		fmt.Sscanf(value, "%d", &result)
-	case int64:
+	case int, int64:
 		fmt.Sscanf(value, "%d", &result)
 	case float64:
 		fmt.Sscanf(value, "%f", &result)

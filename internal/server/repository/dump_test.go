@@ -1,4 +1,4 @@
-package middleware
+package repository
 
 import (
 	"os"
@@ -16,18 +16,16 @@ func TestNewDumper(t *testing.T) {
 
 	filePath := "dump.json"
 	intervalSec := 10
-	restore := true
 	want := &fileDumper{
 		filePath:    filePath,
 		intervalSec: intervalSec,
-		restore:     restore,
 	}
 
-	dumper := NewDumper("dump.json", 10, true)
+	dumper := NewDumper("dump.json", 10)
 	assert.Equal(t, want, dumper)
 }
 
-func Test_fileDumper_Restore(t *testing.T) {
+func TestRestoreMetrics(t *testing.T) {
 	t.Parallel()
 
 	metricsData := []byte(`[
@@ -39,8 +37,7 @@ func Test_fileDumper_Restore(t *testing.T) {
 	err := os.WriteFile(filePath, metricsData, os.ModePerm)
 	require.NoError(t, err)
 
-	dumper := NewDumper(filePath, 0, true)
-	gaugeMetrics, counterMetrics, err := dumper.Restore()
+	gaugeMetrics, counterMetrics, err := RestoreMetrics(filePath)
 	require.NoError(t, err)
 
 	gaugeMetric, ok := gaugeMetrics["gauge1"]
@@ -60,7 +57,7 @@ func Test_fileDumper_Dump(t *testing.T) {
 	t.Parallel()
 
 	filePath := t.TempDir() + "/metrics.json"
-	dumper := NewDumper(filePath, 0, false)
+	dumper := NewDumper(filePath, 0)
 
 	gaugeRepo := new(mocks.MockGaugeRepo)
 	counterRepo := new(mocks.MockCounterRepo)

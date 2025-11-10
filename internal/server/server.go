@@ -14,6 +14,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/internal/server/middleware"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
 	"github.com/yogenyslav/ya-metrics/internal/server/service"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
 // Server serves HTTP requests.
@@ -39,17 +40,26 @@ func (s *Server) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dumper := middleware.NewDumper(s.cfg.FileStoragePath, s.cfg.StoreInterval, s.cfg.Restore)
-	gaugeMetrics, counterMetrics, err := dumper.Restore()
-	if err != nil {
-		return err
+	dumper := repository.NewDumper(s.cfg.Dump.FileStoragePath, s.cfg.Dump.StoreInterval)
+
+	var (
+		gaugeMetrics   repository.StorageState[float64]
+		counterMetrics repository.StorageState[int64]
+		err            error
+	)
+
+	if s.cfg.Dump.Restore {
+		gaugeMetrics, counterMetrics, err = repository.RestoreMetrics(s.cfg.Dump.FileStoragePath)
+		if err != nil {
+			return errs.Wrap(err, "restore metrics")
+		}
 	}
 
 	gaugeRepo := repository.NewMetricInMemRepo(gaugeMetrics)
 	counterRepo := repository.NewMetricInMemRepo(counterMetrics)
 
 	dumper.Start(ctx, gaugeRepo, counterRepo)
-	s.router.Use(dumper.Middleware(gaugeRepo, counterRepo))
+	s.router.Use(middleware.WithFileDumper(dumper, s.cfg.Dump.StoreInterval, gaugeRepo, counterRepo))
 
 	metricService := service.NewService(gaugeRepo, counterRepo)
 
@@ -66,7 +76,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) listen() {
-	if err := http.ListenAndServe(s.cfg.Addr, s.router); err != nil {
+	if err := http.ListenAndServe(s.cfg.Server.Addr, s.router); err != nil {
 		panic(err)
 	}
 }

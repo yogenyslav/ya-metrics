@@ -67,3 +67,42 @@ func TestGetEnv(t *testing.T) {
 		assert.Equal(t, expectedVal, v)
 	})
 }
+
+func Test_parseEnv(t *testing.T) {
+	t.Parallel()
+
+	t.Run("parse string", func(t *testing.T) {
+		t.Parallel()
+
+		value := "asdfg"
+		result := parseEnv[string](value)
+		assert.Equal(t, value, result)
+	})
+
+	t.Run("parse int", func(t *testing.T) {
+		t.Parallel()
+
+		value := "12345"
+		want := 12345
+		result := parseEnv[int](value)
+		assert.Equal(t, want, result)
+	})
+
+	t.Run("parse bool", func(t *testing.T) {
+		t.Parallel()
+
+		value := "true"
+		want := true
+		result := parseEnv[bool](value)
+		assert.Equal(t, want, result)
+	})
+
+	t.Run("parse float64", func(t *testing.T) {
+		t.Parallel()
+
+		value := "1.23"
+		want := 1.23
+		result := parseEnv[float64](value)
+		assert.Equal(t, want, result)
+	})
+}

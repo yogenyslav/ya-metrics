@@ -5,12 +5,12 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -18,6 +18,31 @@ import (
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
+
+type combinedError struct {
+	err []error
+}
+
+// NewCombinedError creates an instance of combinedError.
+func NewCombinedError() *combinedError {
+	return &combinedError{
+		err: make([]error, 0),
+	}
+}
+
+// Error implements the error interface.
+func (e *combinedError) Error() string {
+	b := strings.Builder{}
+	for _, err := range e.err {
+		b.WriteString(err.Error() + "; ")
+	}
+	return b.String()
+}
+
+// Add an error to combinedError.
+func (e *combinedError) Add(err error) {
+	e.err = append(e.err, err)
+}
 
 // Start begins the metric collection and reporting process.
 func (a *Agent) Start() error {
@@ -53,23 +78,24 @@ func (a *Agent) Start() error {
 }
 
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
-	err := make([]error, 0)
+	var err error
+	combinedErr := NewCombinedError()
 
 	gaugeMetrics := coll.GetAllGaugeMetrics()
 	for _, metric := range gaugeMetrics {
-		sendErr := sendMetric(ctx, metric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
-		if sendErr != nil {
-			err = append(err, sendErr)
+		err = sendMetric(ctx, metric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
+		if err != nil {
+			combinedErr.Add(err)
 		}
 	}
 
 	counterMetric := coll.PollCount
-	sendErr := sendMetric(ctx, counterMetric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
-	if sendErr != nil {
-		err = append(err, sendErr)
+	err = sendMetric(ctx, counterMetric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
+	if err != nil {
+		combinedErr.Add(err)
 	}
 
-	return errors.Join(err...)
+	return errs.Wrap(combinedErr, "send all metrics")
 }
 
 func sendMetric[T int64 | float64](

@@ -13,13 +13,23 @@ const (
 	defaultStoreIntervalSec int    = 300
 )
 
-// Config holds the configuration settings for the server.
-type Config struct {
-	Addr            string
-	LogLevel        string
+// ServerConfig holds the configuration settings for the server.
+type ServerConfig struct {
+	Addr     string
+	LogLevel string
+}
+
+// DumpConfig holds settings for repository dumping into file.
+type DumpConfig struct {
 	FileStoragePath string
 	StoreInterval   int
 	Restore         bool
+}
+
+// Config holds the entire application settings.
+type Config struct {
+	Server *ServerConfig
+	Dump   *DumpConfig
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -41,10 +51,14 @@ func NewConfig() (*Config, error) {
 	}
 
 	return &Config{
-		Addr:            pkg.GetEnv("ADDRESS", *addrFlag),
-		LogLevel:        pkg.GetEnv("LOG_LEVEL", *logLevelFlag),
-		FileStoragePath: pkg.GetEnv("FILE_STORAGE_PATH", *fileStoragePathFlag),
-		StoreInterval:   pkg.GetEnv("STORE_INTERVAL", *storeIntervalFlag),
-		Restore:         pkg.GetEnv("RESTORE", *restoreFlag),
+		Server: &ServerConfig{
+			Addr:     pkg.GetEnv("ADDRESS", *addrFlag),
+			LogLevel: pkg.GetEnv("LOG_LEVEL", *logLevelFlag),
+		},
+		Dump: &DumpConfig{
+			FileStoragePath: pkg.GetEnv("FILE_STORAGE_PATH", *fileStoragePathFlag),
+			StoreInterval:   pkg.GetEnv("STORE_INTERVAL", *storeIntervalFlag),
+			Restore:         pkg.GetEnv("RESTORE", *restoreFlag),
+		},
 	}, nil
 }
