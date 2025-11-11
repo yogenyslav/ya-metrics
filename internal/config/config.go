@@ -4,20 +4,46 @@ import (
 	"flag"
 	"os"
 
+	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
-const defaultServerAddr string = "localhost:8080"
+const (
+	defaultServerAddr       string = "localhost:8080"
+	defaultStoreIntervalSec int    = 300
+)
 
-// Config holds the configuration settings for the agent.
+// ServerConfig holds the configuration settings for the server.
+type ServerConfig struct {
+	Addr     string
+	LogLevel string
+}
+
+// DumpConfig holds settings for repository dumping into file.
+type DumpConfig struct {
+	FileStoragePath string
+	StoreInterval   int
+	Restore         bool
+}
+
+// Config holds the entire application settings.
 type Config struct {
-	Addr string
+	Server *ServerConfig
+	Dump   *DumpConfig
 }
 
 // NewConfig creates a new Config with cli args or default values.
 func NewConfig() (*Config, error) {
 	flags := flag.NewFlagSet("server", flag.ExitOnError)
 	addrFlag := flags.String("a", defaultServerAddr, "адрес сервера в формате ip:port")
+	logLevelFlag := flags.String("l", "debug", "уровень логирования (debug, info, error)")
+	fileStoragePathFlag := flags.String("f", "metrics.json", "путь к файлу для хранения метрик")
+	storeIntervalFlag := flags.Int(
+		"i",
+		defaultStoreIntervalSec,
+		"интервал сохранения метрик в файл в секундах (значение 0 делает запись синхронной)",
+	)
+	restoreFlag := flags.Bool("r", false, "восстановление метрик из файла при старте сервера")
 
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
@@ -25,6 +51,14 @@ func NewConfig() (*Config, error) {
 	}
 
 	return &Config{
-		Addr: *addrFlag,
+		Server: &ServerConfig{
+			Addr:     pkg.GetEnv("ADDRESS", *addrFlag),
+			LogLevel: pkg.GetEnv("LOG_LEVEL", *logLevelFlag),
+		},
+		Dump: &DumpConfig{
+			FileStoragePath: pkg.GetEnv("FILE_STORAGE_PATH", *fileStoragePathFlag),
+			StoreInterval:   pkg.GetEnv("STORE_INTERVAL", *storeIntervalFlag),
+			Restore:         pkg.GetEnv("RESTORE", *restoreFlag),
+		},
 	}, nil
 }

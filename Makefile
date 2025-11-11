@@ -11,18 +11,6 @@ get-autotests-arm64:
 	@chmod 755 ./bin/metricstest
 	@echo "autotests binary runner downloaded"
 
-.PHONY: run-autotests
-
-ITER := `git rev-parse --abbrev-ref HEAD | grep -o '[0-9]\+'`
-
-run-autotests:
-	@echo "running autotests for iteration $(ITER)"
-	@if [ ! -f $(AUTOTESTS_BINARY) ]; then \
-		echo "autotests binary not found, downloading..."; \
-		$(MAKE) get-autotests-arm64; \
-	fi
-	@$(AUTOTESTS_BINARY) -test.v -test.run=^TestIteration$(ITER)$ -binary-path=./cmd/server/server -agent-binary-path=./cmd/server/agent
-
 .PHONY: update-autotests
 update-autotests:
 	@echo "fetch autotests from template repo"
@@ -55,3 +43,16 @@ test:
 	@go test ./... -coverprofile=coverage.out
 	@go tool cover -func=coverage.out | grep total
 	@rm -f coverage.out
+
+.PHONY: run-autotests
+
+ITER := `git rev-parse --abbrev-ref HEAD | grep -o '[0-9]\+'`
+ITER_BRANCH := ^TestIteration$(ITER)$
+
+run-autotests: build-server build-agent
+	@echo "running autotests for iteration $(ITER)"
+	@if [ ! -f $(AUTOTESTS_BINARY) ]; then \
+		echo "autotests binary not found, downloading..."; \
+		$(MAKE) get-autotests-arm64; \
+	fi
+	@$(AUTOTESTS_BINARY) -test.v -test.run=$(ITER_BRANCH) -binary-path=./cmd/server/server -agent-binary-path=./cmd/agent/agent -source-path=. -server-port=8080 -file-storage-path=metrics.json

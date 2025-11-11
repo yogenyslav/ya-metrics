@@ -1,8 +1,10 @@
 package main
 
 import (
-	"log"
 	"net/http"
+	"os"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/yogenyslav/ya-metrics/internal/agent"
 	"github.com/yogenyslav/ya-metrics/internal/agent/config"
@@ -10,7 +12,8 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("agent failed")
+		os.Exit(1)
 	}
 }
 

@@ -1,4 +1,4 @@
-package service
+package mocks
 
 import (
 	"github.com/stretchr/testify/mock"
@@ -7,6 +7,11 @@ import (
 
 type MockMetricRepo[T int64 | float64] struct {
 	mock.Mock
+}
+
+func (m *MockMetricRepo[T]) GetMetrics() []*model.MetricsDto {
+	args := m.Called()
+	return args.Get(0).([]*model.MetricsDto)
 }
 
 func (m *MockMetricRepo[T]) Get(name string) (*model.Metrics[T], bool) {

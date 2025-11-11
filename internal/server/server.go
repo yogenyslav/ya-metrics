@@ -1,17 +1,20 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog"
 	"github.com/yogenyslav/ya-metrics/internal/config"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
+	"github.com/yogenyslav/ya-metrics/internal/server/middleware"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
 	"github.com/yogenyslav/ya-metrics/internal/server/service"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
 // Server serves HTTP requests.
@@ -21,9 +24,10 @@ type Server struct {
 }
 
 // NewServer creates new HTTP server.
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config, l *zerolog.Logger) *Server {
 	router := chi.NewRouter()
-	router.Use(middleware.Logger)
+	router.Use(middleware.WithLogging(l))
+	router.Use(middleware.WithCompression(middleware.GzipCompression))
 
 	return &Server{
 		router: router,
@@ -33,8 +37,29 @@ func NewServer(cfg *config.Config) *Server {
 
 // Start starts the HTTP server.
 func (s *Server) Start() error {
-	gaugeRepo := repository.NewMetricInMemRepo[float64]()
-	counterRepo := repository.NewMetricInMemRepo[int64]()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dumper := repository.NewDumper(s.cfg.Dump.FileStoragePath, s.cfg.Dump.StoreInterval)
+
+	var (
+		gaugeMetrics   repository.StorageState[float64]
+		counterMetrics repository.StorageState[int64]
+		err            error
+	)
+
+	if s.cfg.Dump.Restore {
+		gaugeMetrics, counterMetrics, err = repository.RestoreMetrics(s.cfg.Dump.FileStoragePath)
+		if err != nil {
+			return errs.Wrap(err, "restore metrics")
+		}
+	}
+
+	gaugeRepo := repository.NewMetricInMemRepo(gaugeMetrics)
+	counterRepo := repository.NewMetricInMemRepo(counterMetrics)
+
+	dumper.Start(ctx, gaugeRepo, counterRepo)
+	s.router.Use(middleware.WithFileDumper(dumper, s.cfg.Dump.StoreInterval, gaugeRepo, counterRepo))
 
 	metricService := service.NewService(gaugeRepo, counterRepo)
 
@@ -51,7 +76,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) listen() {
-	if err := http.ListenAndServe(s.cfg.Addr, s.router); err != nil {
+	if err := http.ListenAndServe(s.cfg.Server.Addr, s.router); err != nil {
 		panic(err)
 	}
 }

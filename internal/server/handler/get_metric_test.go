@@ -1,13 +1,17 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg"
 )
 
 func TestHandler_GetMetric(t *testing.T) {
@@ -15,36 +19,45 @@ func TestHandler_GetMetric(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		ms         metricService
+		ms         func() metricService
 		metricType string
-		metricName string
-		writer     http.ResponseWriter
+		metricID   string
 		wantCode   int
 	}{
 		{
-			name: "GetMetric with existing metric",
+			name: "GetMetric gauge with existing metric",
 			ms: func() metricService {
 				m := new(MockMetricService)
-				m.On("GetMetric", mock.Anything, "gauge", "metric1").
+				m.On("GetMetric", mock.Anything, model.Gauge, "metric1").
 					Return(model.NewGaugeMetric("metric1").ToDto(), true)
 				return m
-			}(),
-			writer:     httptest.NewRecorder(),
-			metricType: "gauge",
-			metricName: "metric1",
+			},
+			metricType: model.Gauge,
+			metricID:   "metric1",
+			wantCode:   http.StatusOK,
+		},
+		{
+			name: "GetMetric counter with existing metric",
+			ms: func() metricService {
+				m := new(MockMetricService)
+				m.On("GetMetric", mock.Anything, model.Counter, "metric1").
+					Return(model.NewCounterMetric("metric1").ToDto(), true)
+				return m
+			},
+			metricType: model.Counter,
+			metricID:   "metric1",
 			wantCode:   http.StatusOK,
 		},
 		{
 			name: "GetMetric with non-existing metric",
 			ms: func() metricService {
 				m := new(MockMetricService)
-				m.On("GetMetric", mock.Anything, "gauge", "non_existing_metric").
+				m.On("GetMetric", mock.Anything, model.Gauge, "non_existing_metric").
 					Return((*model.MetricsDto)(nil), false)
 				return m
-			}(),
-			writer:     httptest.NewRecorder(),
-			metricType: "gauge",
-			metricName: "non_existing_metric",
+			},
+			metricType: model.Gauge,
+			metricID:   "non_existing_metric",
 			wantCode:   http.StatusNotFound,
 		},
 		{
@@ -54,23 +67,21 @@ func TestHandler_GetMetric(t *testing.T) {
 				m.On("GetMetric", mock.Anything, "invalid", "metric1").
 					Return((*model.MetricsDto)(nil), false)
 				return m
-			}(),
-			writer:     httptest.NewRecorder(),
+			},
 			metricType: "invalid",
-			metricName: "metric1",
+			metricID:   "metric1",
 			wantCode:   http.StatusNotFound,
 		},
 		{
 			name: "GetMetric with missing metric name",
 			ms: func() metricService {
 				m := new(MockMetricService)
-				m.On("GetMetric", mock.Anything, "gauge", "").
+				m.On("GetMetric", mock.Anything, model.Gauge, "").
 					Return((*model.MetricsDto)(nil), false)
 				return m
-			}(),
-			writer:     httptest.NewRecorder(),
-			metricType: "gauge",
-			metricName: "",
+			},
+			metricType: model.Gauge,
+			metricID:   "",
 			wantCode:   http.StatusNotFound,
 		},
 	}
@@ -79,24 +90,73 @@ func TestHandler_GetMetric(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewHandler(tt.ms)
+			t.Run(tt.name+" raw request", func(t *testing.T) {
+				t.Parallel()
 
-			req := httptest.NewRequest(
-				http.MethodGet,
-				"/value/{"+metricTypeParam+"}/{"+metricNameParam+"}",
-				nil,
-			)
-			req.SetPathValue(metricTypeParam, tt.metricType)
-			req.SetPathValue(metricNameParam, tt.metricName)
+				h := NewHandler(tt.ms())
+				writer := httptest.NewRecorder()
 
-			h.GetMetric(tt.writer, req)
+				req := httptest.NewRequest(
+					http.MethodGet,
+					"/value/{"+metricTypeParam+"}/{"+metricIDParam+"}",
+					nil,
+				)
+				req.SetPathValue(metricTypeParam, tt.metricType)
+				req.SetPathValue(metricIDParam, tt.metricID)
 
-			resp := tt.writer.(*httptest.ResponseRecorder)
-			assert.Equal(t, tt.wantCode, resp.Code)
+				h.GetMetricRaw(writer, req)
+				assert.Equal(t, tt.wantCode, writer.Code)
 
-			if tt.wantCode == http.StatusOK {
-				assert.Equal(t, "0", resp.Body.String())
-			}
+				if tt.wantCode == http.StatusOK {
+					assert.Equal(t, "0", writer.Body.String())
+				}
+			})
+
+			t.Run(tt.name+"json request", func(t *testing.T) {
+				t.Parallel()
+
+				h := NewHandler(tt.ms())
+				writer := httptest.NewRecorder()
+
+				data := model.MetricsDto{
+					Type: tt.metricType,
+					ID:   tt.metricID,
+				}
+				body, err := json.Marshal(data)
+				require.NoError(t, err)
+
+				req := httptest.NewRequest(
+					http.MethodPost,
+					"/value",
+					bytes.NewReader(body),
+				)
+
+				h.GetMetricJSON(writer, req)
+				assert.Equal(t, tt.wantCode, writer.Code)
+
+				var want model.MetricsDto
+				switch tt.metricType {
+				case model.Gauge:
+					want = model.MetricsDto{
+						ID:    tt.metricID,
+						Type:  model.Gauge,
+						Value: pkg.Ptr(0.0),
+					}
+				case model.Counter:
+					want = model.MetricsDto{
+						ID:    tt.metricID,
+						Type:  model.Counter,
+						Delta: pkg.Ptr[int64](0),
+					}
+				}
+
+				wantStr, err := json.Marshal(want)
+				require.NoError(t, err)
+
+				if tt.wantCode == http.StatusOK {
+					assert.Equal(t, string(wantStr), writer.Body.String())
+				}
+			})
 		})
 	}
 }

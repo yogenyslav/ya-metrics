@@ -17,5 +17,7 @@ func (h *Handler) ListMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
 }

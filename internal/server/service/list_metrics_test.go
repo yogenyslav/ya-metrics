@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg"
+	"github.com/yogenyslav/ya-metrics/tests/mocks"
 )
 
 func TestService_ListMetrics(t *testing.T) {
@@ -30,10 +32,10 @@ func TestService_ListMetrics(t *testing.T) {
 				*model.NewCounterMetric("error_count"),
 			},
 			want: []*model.MetricsDto{
-				{Name: "mem_alloc", Type: model.Gauge, Value: "0"},
-				{Name: "cpu_usage", Type: model.Gauge, Value: "0"},
-				{Name: "request_count", Type: model.Counter, Value: "0"},
-				{Name: "error_count", Type: model.Counter, Value: "0"},
+				{ID: "mem_alloc", Type: model.Gauge, Value: pkg.Ptr(0.0)},
+				{ID: "cpu_usage", Type: model.Gauge, Value: pkg.Ptr(0.0)},
+				{ID: "request_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
+				{ID: "error_count", Type: model.Counter, Delta: pkg.Ptr[int64](0)},
 			},
 		},
 		{
@@ -48,8 +50,8 @@ func TestService_ListMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gr := &MockGaugeRepo{}
-			cr := &MockCounterRepo{}
+			gr := &mocks.MockGaugeRepo{}
+			cr := &mocks.MockCounterRepo{}
 
 			gr.On("List").Return(tt.gaugeMetrics)
 			cr.On("List").Return(tt.counterMetrics)
