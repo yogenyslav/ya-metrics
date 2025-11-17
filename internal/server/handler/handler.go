@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg/database"
 )
 
 const (
@@ -24,18 +25,21 @@ type metricService interface {
 // Handler serves HTTP requests.
 type Handler struct {
 	ms metricService
+	db database.DB
 }
 
 // NewHandler creates new HTTP handler.
-func NewHandler(ms metricService) *Handler {
+func NewHandler(ms metricService, db database.DB) *Handler {
 	return &Handler{
 		ms: ms,
+		db: db,
 	}
 }
 
 // RegisterRoutes registers HTTP routes.
 func (h *Handler) RegisterRoutes(router chi.Router) {
 	router.Get("/", h.ListMetrics)
+	router.Get("/ping", h.Ping)
 	router.Post("/value/", h.GetMetricJSON)
 	router.Get("/value/{metricType}/{metricID}", h.GetMetricRaw)
 	router.Post(

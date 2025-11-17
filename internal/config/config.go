@@ -13,6 +13,11 @@ const (
 	defaultStoreIntervalSec int    = 300
 )
 
+// DatabaseConfig holds the configuration settings for the database.
+type DatabaseConfig struct {
+	Dsn string
+}
+
 // ServerConfig holds the configuration settings for the server.
 type ServerConfig struct {
 	Addr     string
@@ -30,6 +35,7 @@ type DumpConfig struct {
 type Config struct {
 	Server *ServerConfig
 	Dump   *DumpConfig
+	DB     *DatabaseConfig
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -44,6 +50,7 @@ func NewConfig() (*Config, error) {
 		"интервал сохранения метрик в файл в секундах (значение 0 делает запись синхронной)",
 	)
 	restoreFlag := flags.Bool("r", false, "восстановление метрик из файла при старте сервера")
+	dbDsnFlag := flags.String("d", "", "строка с адресом подключения к БД")
 
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
@@ -59,6 +66,9 @@ func NewConfig() (*Config, error) {
 			FileStoragePath: pkg.GetEnv("FILE_STORAGE_PATH", *fileStoragePathFlag),
 			StoreInterval:   pkg.GetEnv("STORE_INTERVAL", *storeIntervalFlag),
 			Restore:         pkg.GetEnv("RESTORE", *restoreFlag),
+		},
+		DB: &DatabaseConfig{
+			Dsn: pkg.GetEnv("DATABASE_DSN", *dbDsnFlag),
 		},
 	}, nil
 }
