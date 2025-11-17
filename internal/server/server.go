@@ -14,6 +14,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/internal/server/middleware"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
 	"github.com/yogenyslav/ya-metrics/internal/server/service"
+	"github.com/yogenyslav/ya-metrics/pkg/database"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
@@ -58,12 +59,18 @@ func (s *Server) Start() error {
 	gaugeRepo := repository.NewMetricInMemRepo(gaugeMetrics)
 	counterRepo := repository.NewMetricInMemRepo(counterMetrics)
 
+	pg, err := database.NewPostgres(ctx, s.cfg.DB.Dsn)
+	if err != nil {
+		return errs.Wrap(err, "connect to database")
+	}
+	defer pg.Close()
+
 	dumper.Start(ctx, gaugeRepo, counterRepo)
 	s.router.Use(middleware.WithFileDumper(dumper, s.cfg.Dump.StoreInterval, gaugeRepo, counterRepo))
 
 	metricService := service.NewService(gaugeRepo, counterRepo)
 
-	h := handler.NewHandler(metricService)
+	h := handler.NewHandler(metricService, pg)
 	h.RegisterRoutes(s.router)
 
 	go s.listen()

@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg/database"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
+	"github.com/yogenyslav/ya-metrics/tests/mocks"
 )
 
 func TestHandler_UpdateMetric(t *testing.T) {
@@ -21,6 +23,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 	tests := []struct {
 		name        string
 		ms          func() metricService
+		db          database.DB
 		metricType  string
 		metrictName string
 		metricValue string
@@ -34,6 +37,10 @@ func TestHandler_UpdateMetric(t *testing.T) {
 					Return(nil)
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType:  model.Gauge,
 			metrictName: "metric1",
 			metricValue: "123.45",
@@ -47,6 +54,10 @@ func TestHandler_UpdateMetric(t *testing.T) {
 					Return(nil)
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType:  model.Counter,
 			metrictName: "metric1",
 			metricValue: "123",
@@ -67,6 +78,10 @@ func TestHandler_UpdateMetric(t *testing.T) {
 					Return(errs.ErrInvalidMetricType)
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType:  "invalid",
 			metrictName: "metric1",
 			metricValue: "123.45",
@@ -80,6 +95,10 @@ func TestHandler_UpdateMetric(t *testing.T) {
 					Return(errs.ErrInvalidMetricValue)
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType:  model.Gauge,
 			metrictName: "metric1",
 			metricValue: "invalid",
@@ -95,7 +114,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				t.Run(tt.name+" raw request", func(t *testing.T) {
 					t.Parallel()
 
-					h := NewHandler(tt.ms())
+					h := NewHandler(tt.ms(), tt.db)
 
 					writer := httptest.NewRecorder()
 					req := httptest.NewRequest(
@@ -115,7 +134,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				t.Run(tt.name+" json request", func(t *testing.T) {
 					t.Parallel()
 
-					h := NewHandler(tt.ms())
+					h := NewHandler(tt.ms(), tt.db)
 
 					data := model.MetricsDto{
 						Type: tt.metricType,
