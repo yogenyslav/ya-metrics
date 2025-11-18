@@ -17,7 +17,7 @@ func RunMigration(db DB, dialect string) error {
 		return err
 	}
 
-	conn, err := db.SqlDB()
+	conn, err := db.SQLDB()
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,6 @@ type DB interface {
 	QueryRow(ctx context.Context, dsy any, query string, args ...any) error
 	QuerySlice(ctx context.Context, dst any, query string, args ...any) error
 	Ping(ctx context.Context) error
-	SqlDB() (*sql.DB, error)
+	SQLDB() (*sql.DB, error)
 	Close()
 }

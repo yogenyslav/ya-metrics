@@ -25,8 +25,8 @@ func NewPostgres(ctx context.Context, dsn string) (*Postgres, error) {
 	return &Postgres{pool: pool}, nil
 }
 
-// SqlDB return a sql.DB format database conn.
-func (p *Postgres) SqlDB() (*sql.DB, error) {
+// SQLDB return a sql.DB format database conn.
+func (p *Postgres) SQLDB() (*sql.DB, error) {
 	db, err := sql.Open("pgx", p.pool.Config().ConnString())
 	if err != nil {
 		return nil, err

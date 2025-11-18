@@ -119,17 +119,17 @@ func (mr *MockDBMockRecorder) QuerySlice(arg0, arg1, arg2 interface{}, arg3 ...i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QuerySlice", reflect.TypeOf((*MockDB)(nil).QuerySlice), varargs...)
 }
 
-// SqlDB mocks base method.
-func (m *MockDB) SqlDB() (*sql.DB, error) {
+// SQLDB mocks base method.
+func (m *MockDB) SQLDB() (*sql.DB, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SqlDB")
+	ret := m.ctrl.Call(m, "SQLDB")
 	ret0, _ := ret[0].(*sql.DB)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SqlDB indicates an expected call of SqlDB.
-func (mr *MockDBMockRecorder) SqlDB() *gomock.Call {
+// SQLDB indicates an expected call of SQLDB.
+func (mr *MockDBMockRecorder) SQLDB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SqlDB", reflect.TypeOf((*MockDB)(nil).SqlDB))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SQLDB", reflect.TypeOf((*MockDB)(nil).SQLDB))
 }
