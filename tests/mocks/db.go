@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	sql "database/sql"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -116,4 +117,19 @@ func (mr *MockDBMockRecorder) QuerySlice(arg0, arg1, arg2 interface{}, arg3 ...i
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QuerySlice", reflect.TypeOf((*MockDB)(nil).QuerySlice), varargs...)
+}
+
+// SqlDB mocks base method.
+func (m *MockDB) SqlDB() (*sql.DB, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SqlDB")
+	ret0, _ := ret[0].(*sql.DB)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SqlDB indicates an expected call of SqlDB.
+func (mr *MockDBMockRecorder) SqlDB() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SqlDB", reflect.TypeOf((*MockDB)(nil).SqlDB))
 }

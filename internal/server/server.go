@@ -53,6 +53,11 @@ func NewServer(
 			return nil, errs.Wrap(err, "connect to database")
 		}
 		srv.pg = pg
+
+		err = database.RunMigration(pg, "postgres")
+		if err != nil {
+			return nil, errs.Wrap(err, "run migrations")
+		}
 	case cfg.Dump.FileStoragePath != "":
 		dumper := repository.NewDumper(cfg.Dump.FileStoragePath, cfg.Dump.StoreInterval)
 		srv.dumper = dumper

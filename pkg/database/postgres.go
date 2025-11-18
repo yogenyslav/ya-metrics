@@ -2,6 +2,9 @@ package database
 
 import (
 	"context"
+	"database/sql"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,6 +23,15 @@ func NewPostgres(ctx context.Context, dsn string) (*Postgres, error) {
 	}
 
 	return &Postgres{pool: pool}, nil
+}
+
+// SqlDB return a sql.DB format database conn.
+func (p *Postgres) SqlDB() (*sql.DB, error) {
+	db, err := sql.Open("pgx", p.pool.Config().ConnString())
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 // Close the underlying pool.
