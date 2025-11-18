@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	sql "database/sql"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -34,6 +35,38 @@ func (m *MockDB) EXPECT() *MockDBMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method.
+func (m *MockDB) Close() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Close")
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockDBMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDB)(nil).Close))
+}
+
+// Exec mocks base method.
+func (m *MockDB) Exec(arg0 context.Context, arg1 string, arg2 ...interface{}) (int64, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Exec", varargs...)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Exec indicates an expected call of Exec.
+func (mr *MockDBMockRecorder) Exec(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockDB)(nil).Exec), varargs...)
+}
+
 // Ping mocks base method.
 func (m *MockDB) Ping(arg0 context.Context) error {
 	m.ctrl.T.Helper()
@@ -46,4 +79,57 @@ func (m *MockDB) Ping(arg0 context.Context) error {
 func (mr *MockDBMockRecorder) Ping(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockDB)(nil).Ping), arg0)
+}
+
+// QueryRow mocks base method.
+func (m *MockDB) QueryRow(arg0 context.Context, arg1 interface{}, arg2 string, arg3 ...interface{}) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "QueryRow", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// QueryRow indicates an expected call of QueryRow.
+func (mr *MockDBMockRecorder) QueryRow(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryRow", reflect.TypeOf((*MockDB)(nil).QueryRow), varargs...)
+}
+
+// QuerySlice mocks base method.
+func (m *MockDB) QuerySlice(arg0 context.Context, arg1 interface{}, arg2 string, arg3 ...interface{}) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1, arg2}
+	for _, a := range arg3 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "QuerySlice", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// QuerySlice indicates an expected call of QuerySlice.
+func (mr *MockDBMockRecorder) QuerySlice(arg0, arg1, arg2 interface{}, arg3 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1, arg2}, arg3...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QuerySlice", reflect.TypeOf((*MockDB)(nil).QuerySlice), varargs...)
+}
+
+// SQLDB mocks base method.
+func (m *MockDB) SQLDB() (*sql.DB, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SQLDB")
+	ret0, _ := ret[0].(*sql.DB)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SQLDB indicates an expected call of SQLDB.
+func (mr *MockDBMockRecorder) SQLDB() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SQLDB", reflect.TypeOf((*MockDB)(nil).SQLDB))
 }

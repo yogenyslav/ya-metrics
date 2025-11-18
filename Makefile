@@ -62,3 +62,24 @@ run-autotests: build-server build-agent
 .PHONY: gen
 gen:
 	@go generate ./...
+
+.PHONY: migrate-new
+migrate-new:
+	@echo "new migration"
+	@cd migrations && goose create $(name) sql
+
+.PHONY: migrate-up
+include .env
+migrate-up:
+	@echo "migrating up"
+	@cd migrations && goose postgres "user=${POSTGRES_USER} \
+          password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=disable \
+          host=localhost port=${POSTGRES_PORT}" up
+
+.PHONY: migrate-down
+include .env
+migrate-down:
+	@echo "migrating down"
+	@cd migrations && goose postgres "user=${POSTGRES_USER} \
+		  password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=disable \
+		  host=localhost port=${POSTGRES_PORT}" down

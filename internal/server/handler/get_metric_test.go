@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,9 +31,9 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric gauge with existing metric",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Gauge, "metric1").
-					Return(model.NewGaugeMetric("metric1").ToDto(), true)
+					Return(model.NewGaugeMetric("metric1").ToDto(), nil)
 				return m
 			},
 			db: func() *mocks.MockDB {
@@ -46,9 +47,9 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric counter with existing metric",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Counter, "metric1").
-					Return(model.NewCounterMetric("metric1").ToDto(), true)
+					Return(model.NewCounterMetric("metric1").ToDto(), nil)
 				return m
 			},
 			db: func() *mocks.MockDB {
@@ -62,9 +63,9 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric with non-existing metric",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Gauge, "non_existing_metric").
-					Return((*model.MetricsDto)(nil), false)
+					Return((*model.MetricsDto)(nil), errors.New("not found"))
 				return m
 			},
 			db: func() *mocks.MockDB {
@@ -78,9 +79,9 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric with invalid metric type",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, "invalid", "metric1").
-					Return((*model.MetricsDto)(nil), false)
+					Return((*model.MetricsDto)(nil), errors.New("invalid metric type"))
 				return m
 			},
 			db: func() *mocks.MockDB {
@@ -94,9 +95,9 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric with missing metric name",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Gauge, "").
-					Return((*model.MetricsDto)(nil), false)
+					Return((*model.MetricsDto)(nil), errors.New("metric ID is required"))
 				return m
 			},
 			db: func() *mocks.MockDB {

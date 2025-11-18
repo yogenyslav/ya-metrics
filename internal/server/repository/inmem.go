@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/yogenyslav/ya-metrics/internal/model"
@@ -70,43 +72,48 @@ func NewMetricInMemRepo[T int64 | float64](state StorageState[T]) *MetricInMemRe
 }
 
 // GetMetrics returns all metrics in MetricsDto format.
-func (r *MetricInMemRepo[T]) GetMetrics() []*model.MetricsDto {
+func (r *MetricInMemRepo[T]) GetMetrics(_ context.Context) ([]*model.MetricsDto, error) {
 	metrics := make([]*model.MetricsDto, 0, len(r.storage))
 	for _, metric := range r.storage {
 		metrics = append(metrics, metric.ToDto())
 	}
-	return metrics
+	return metrics, nil
 }
 
 // Get returns the value of a metric by its name and a bool flag to check if it exists.
-func (r *MetricInMemRepo[T]) Get(name string) (*model.Metrics[T], bool) {
+func (r *MetricInMemRepo[T]) Get(_ context.Context, name string) (*model.Metrics[T], error) {
 	value, exists := r.storage[name]
-	return value, exists
+	if !exists {
+		return nil, errors.New("value not found")
+	}
+	return value, nil
 }
 
 // Set sets the value of a metric by its name.
-func (r *MetricInMemRepo[T]) Set(name string, value T, tp string) {
+func (r *MetricInMemRepo[T]) Set(_ context.Context, name string, value T, tp string) error {
 	if metric, ok := r.storage[name]; ok {
 		metric.Value = value
 	} else {
 		r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: value}
 	}
+	return nil
 }
 
 // Update updates the value of a metric by adding the delta to the current value.
-func (r *MetricInMemRepo[T]) Update(name string, delta T, tp string) {
+func (r *MetricInMemRepo[T]) Update(_ context.Context, name string, delta T, tp string) error {
 	if metric, exists := r.storage[name]; exists {
 		metric.Value += delta
 	} else {
 		r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: delta}
 	}
+	return nil
 }
 
 // List returns a list of all metrics in the repository.
-func (r *MetricInMemRepo[T]) List() []model.Metrics[T] {
+func (r *MetricInMemRepo[T]) List(_ context.Context) ([]model.Metrics[T], error) {
 	metrics := make([]model.Metrics[T], 0, len(r.storage))
 	for _, metric := range r.storage {
 		metrics = append(metrics, *metric)
 	}
-	return metrics
+	return metrics, nil
 }

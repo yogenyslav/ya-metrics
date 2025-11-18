@@ -15,8 +15,8 @@ func (h *Handler) GetMetricRaw(w http.ResponseWriter, r *http.Request) {
 	metricType := r.PathValue(metricTypeParam)
 	metricID := r.PathValue(metricIDParam)
 
-	metric, found := h.ms.GetMetric(r.Context(), metricType, metricID)
-	if !found {
+	metric, err := h.ms.GetMetric(r.Context(), metricType, metricID)
+	if err != nil {
 		h.sendError(w, errs.Wrap(errs.ErrMetricNotFound))
 		return
 	}
@@ -47,8 +47,8 @@ func (h *Handler) GetMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metric, found := h.ms.GetMetric(r.Context(), req.Type, req.ID)
-	if !found {
+	metric, err := h.ms.GetMetric(r.Context(), req.Type, req.ID)
+	if err != nil {
 		h.sendError(w, errs.Wrap(errs.ErrMetricNotFound))
 		return
 	}

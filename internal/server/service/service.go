@@ -1,24 +1,26 @@
 package service
 
 import (
+	"context"
+
 	"github.com/yogenyslav/ya-metrics/internal/model"
 )
 
 type metricRepo[T int64 | float64] interface {
-	Get(name string) (*model.Metrics[T], bool)
-	List() []model.Metrics[T]
+	Get(ctx context.Context, name string) (*model.Metrics[T], error)
+	List(ctx context.Context) ([]model.Metrics[T], error)
 }
 
 // GaugeRepo is the interface for gauge metric repository.
 type GaugeRepo interface {
 	metricRepo[float64]
-	Set(name string, value float64, tp string)
+	Set(ctx context.Context, name string, value float64, tp string) error
 }
 
 // CounterRepo is the interface for counter metric repository.
 type CounterRepo interface {
 	metricRepo[int64]
-	Update(name string, delta int64, tp string)
+	Update(ctx context.Context, name string, delta int64, tp string) error
 }
 
 // Service provides metric-related operations.

@@ -16,14 +16,14 @@ func (s *Service) UpdateMetric(ctx context.Context, metricType, name, rawValue s
 		if err != nil {
 			return errs.Wrap(errs.ErrInvalidMetricValue, err.Error())
 		}
-		s.cr.Update(name, metricValue, metricType)
+		s.cr.Update(ctx, name, metricValue, metricType)
 		return nil
 	case model.Gauge:
 		metricValue, err := strconv.ParseFloat(rawValue, 64)
 		if err != nil {
 			return errs.Wrap(errs.ErrInvalidMetricValue, err.Error())
 		}
-		s.gr.Set(name, metricValue, metricType)
+		s.gr.Set(ctx, name, metricValue, metricType)
 		return nil
 	}
 	return errs.Wrap(errs.ErrInvalidMetricType)

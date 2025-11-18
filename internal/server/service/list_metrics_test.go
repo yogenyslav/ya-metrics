@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
@@ -53,12 +54,12 @@ func TestService_ListMetrics(t *testing.T) {
 			gr := &mocks.MockGaugeRepo{}
 			cr := &mocks.MockCounterRepo{}
 
-			gr.On("List").Return(tt.gaugeMetrics)
-			cr.On("List").Return(tt.counterMetrics)
+			gr.On("List", mock.Anything).Return(tt.gaugeMetrics, nil)
+			cr.On("List", mock.Anything).Return(tt.counterMetrics, nil)
 
 			s := NewService(gr, cr)
-			metrics := s.ListMetrics(ctx)
-
+			metrics, err := s.ListMetrics(ctx)
+			assert.NoError(t, err)
 			assert.ElementsMatch(t, tt.want, metrics)
 		})
 	}

@@ -32,7 +32,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 		{
 			name: "UpdateMetric gauge with valid parameters",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("UpdateMetric", mock.Anything, model.Gauge, "metric1", "123.45").
 					Return(nil)
 				return m
@@ -49,7 +49,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 		{
 			name: "UpdateMetric counter with valid parameters",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("UpdateMetric", mock.Anything, model.Counter, "metric1", "123").
 					Return(nil)
 				return m
@@ -65,7 +65,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 		},
 		{
 			name:        "UpdateMetric with missing metric name",
-			ms:          func() metricService { return new(MockMetricService) },
+			ms:          func() metricService { return new(mocks.MockMetricService) },
 			metricType:  model.Gauge,
 			metricValue: "123.45",
 			wantCode:    http.StatusNotFound,
@@ -73,7 +73,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 		{
 			name: "UpdateMetric with invalid metric type",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("UpdateMetric", mock.Anything, "invalid", "metric1", mock.Anything).
 					Return(errs.ErrInvalidMetricType)
 				return m
@@ -90,7 +90,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 		{
 			name: "UpdateMetric with invalid metric value",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("UpdateMetric", mock.Anything, model.Gauge, "metric1", mock.Anything).
 					Return(errs.ErrInvalidMetricValue)
 				return m
