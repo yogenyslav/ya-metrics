@@ -18,8 +18,8 @@ const (
 
 type metricService interface {
 	UpdateMetric(ctx context.Context, metricType, metricID, rawValue string) error
-	GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, bool)
-	ListMetrics(ctx context.Context) []*model.MetricsDto
+	GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, error)
+	ListMetrics(ctx context.Context) ([]*model.MetricsDto, error)
 }
 
 // Handler serves HTTP requests.

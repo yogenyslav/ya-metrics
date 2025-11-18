@@ -1,9 +1,11 @@
 package repository
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg"
 )
@@ -19,7 +21,7 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 		r          MetricInMemRepo[T]
 		args       args
 		wantMetric *model.Metrics[T]
-		wantExist  bool
+		wantErr    bool
 	}
 
 	t.Run(
@@ -36,14 +38,14 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 					},
 					args:       args{name: "metric1"},
 					wantMetric: &model.Metrics[int64]{ID: "metric1", Value: 10},
-					wantExist:  true,
+					wantErr:    false,
 				},
 				{
 					name:       "Get non-existing int64 metric",
 					r:          MetricInMemRepo[int64]{storage: make(StorageState[int64])},
 					args:       args{name: "metric2"},
 					wantMetric: nil,
-					wantExist:  false,
+					wantErr:    true,
 				},
 			}
 
@@ -51,9 +53,13 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						metric, exist := tt.r.Get(tt.args.name)
-						assert.Equal(t, tt.wantMetric, metric)
-						assert.Equal(t, tt.wantExist, exist)
+						metric, err := tt.r.Get(context.Background(), tt.args.name)
+						if tt.wantErr {
+							require.Error(t, err)
+						} else {
+							require.NoError(t, err)
+							assert.Equal(t, tt.wantMetric, metric)
+						}
 					},
 				)
 			}
@@ -74,14 +80,14 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 					},
 					args:       args{name: "metric1"},
 					wantMetric: &model.Metrics[float64]{ID: "metric1", Value: 10.5},
-					wantExist:  true,
+					wantErr:    false,
 				},
 				{
 					name:       "Get non-existing float64 metric",
 					r:          MetricInMemRepo[float64]{storage: make(StorageState[float64])},
 					args:       args{name: "metric2"},
 					wantMetric: nil,
-					wantExist:  false,
+					wantErr:    true,
 				},
 			}
 
@@ -89,9 +95,13 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						got, got1 := tt.r.Get(tt.args.name)
-						assert.Equal(t, tt.wantMetric, got)
-						assert.Equal(t, tt.wantExist, got1)
+						metric, err := tt.r.Get(context.Background(), tt.args.name)
+						if tt.wantErr {
+							require.Error(t, err)
+						} else {
+							require.NoError(t, err)
+							assert.Equal(t, tt.wantMetric, metric)
+						}
 					},
 				)
 			}
@@ -128,9 +138,9 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Set(tt.args.name, tt.args.value, model.Counter)
-						got, exists := tt.r.Get(tt.args.name)
-						assert.True(t, exists)
+						tt.r.Set(context.Background(), tt.args.name, tt.args.value, model.Counter)
+						got, err := tt.r.Get(context.Background(), tt.args.name)
+						assert.NoError(t, err)
 						assert.Equal(t, tt.args.value, got.Value)
 					},
 				)
@@ -154,9 +164,9 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Set(tt.args.name, tt.args.value, model.Gauge)
-						got, exists := tt.r.Get(tt.args.name)
-						assert.True(t, exists)
+						tt.r.Set(context.Background(), tt.args.name, tt.args.value, model.Gauge)
+						got, err := tt.r.Get(context.Background(), tt.args.name)
+						assert.NoError(t, err)
 						assert.Equal(t, tt.args.value, got.Value)
 					},
 				)
@@ -203,9 +213,9 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Update(tt.args.name, tt.args.delta, model.Counter)
-						got, exists := tt.r.Get(tt.args.name)
-						assert.True(t, exists)
+						tt.r.Update(context.Background(), tt.args.name, tt.args.delta, model.Counter)
+						got, err := tt.r.Get(context.Background(), tt.args.name)
+						assert.NoError(t, err)
 						expectedValue := tt.args.delta
 						if original, ok := tt.r.storage[tt.args.name]; ok {
 							expectedValue += original.Value - tt.args.delta
@@ -242,9 +252,9 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						tt.r.Update(tt.args.name, tt.args.delta, model.Gauge)
-						got, exists := tt.r.Get(tt.args.name)
-						assert.True(t, exists)
+						tt.r.Update(context.Background(), tt.args.name, tt.args.delta, model.Gauge)
+						got, err := tt.r.Get(context.Background(), tt.args.name)
+						assert.NoError(t, err)
 						expectedValue := tt.args.delta
 						if original, ok := tt.r.storage[tt.args.name]; ok {
 							expectedValue += original.Value - tt.args.delta
@@ -371,7 +381,7 @@ func TestMetricInMemRepo_List(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						metrics := tt.r.List()
+						metrics, _ := tt.r.List(context.Background())
 						assert.ElementsMatch(t, tt.want, metrics)
 					},
 				)
@@ -408,7 +418,7 @@ func TestMetricInMemRepo_List(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						metrics := tt.r.List()
+						metrics, _ := tt.r.List(context.Background())
 						assert.ElementsMatch(t, tt.want, metrics)
 					},
 				)
@@ -435,7 +445,8 @@ func TestMetricInMemRepo_GetMetrics(t *testing.T) {
 			{ID: "metric2", Type: model.Counter, Delta: pkg.Ptr[int64](20)},
 		}
 
-		got := repo.GetMetrics()
+		got, err := repo.GetMetrics(context.Background())
+		assert.NoError(t, err)
 		assert.ElementsMatch(t, want, got)
 	})
 
@@ -454,7 +465,8 @@ func TestMetricInMemRepo_GetMetrics(t *testing.T) {
 			{ID: "metric2", Type: model.Gauge, Value: pkg.Ptr(20.3)},
 		}
 
-		got := repo.GetMetrics()
+		got, err := repo.GetMetrics(context.Background())
+		assert.NoError(t, err)
 		assert.ElementsMatch(t, want, got)
 	})
 }

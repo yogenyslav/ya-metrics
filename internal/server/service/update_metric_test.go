@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
 )
 
@@ -107,9 +108,17 @@ func TestService_UpdateMetric(t *testing.T) {
 
 				switch tt.args.metricType {
 				case model.Gauge:
-					gr.On("Set", tt.args.name, mock.AnythingOfType("float64")).Return()
+					if !tt.wantErr {
+						gr.On("Set", mock.Anything, tt.args.name, mock.AnythingOfType("float64")).Return(nil)
+					} else {
+						gr.On("Set", mock.Anything, tt.args.name, mock.AnythingOfType("float64")).Return(errs.ErrInvalidMetricValue)
+					}
 				case model.Counter:
-					cr.On("Update", tt.args.name, mock.AnythingOfType("int64")).Return()
+					if !tt.wantErr {
+						cr.On("Update", mock.Anything, tt.args.name, mock.AnythingOfType("int64")).Return(nil)
+					} else {
+						cr.On("Update", mock.Anything, tt.args.name, mock.AnythingOfType("int64")).Return(errs.ErrInvalidMetricValue)
+					}
 				}
 
 				err := s.UpdateMetric(ctx, tt.args.metricType, tt.args.name, tt.args.rawValue)

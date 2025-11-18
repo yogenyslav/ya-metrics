@@ -27,12 +27,12 @@ func TestHandler_ListMetrics(t *testing.T) {
 		{
 			name: "ListMetrics with existing metrics",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("ListMetrics", mock.Anything).
 					Return([]*model.MetricsDto{
 						model.NewGaugeMetric("gauge1").ToDto(),
 						model.NewCounterMetric("counter1").ToDto(),
-					})
+					}, nil)
 				return m
 			}(),
 			db: func() *mocks.MockDB {
@@ -48,9 +48,9 @@ func TestHandler_ListMetrics(t *testing.T) {
 		{
 			name: "ListMetrics with no metrics",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("ListMetrics", mock.Anything).
-					Return([]*model.MetricsDto{})
+					Return([]*model.MetricsDto{}, nil)
 				return m
 			}(),
 			db: func() *mocks.MockDB {

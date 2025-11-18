@@ -1,10 +1,12 @@
 package repository
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg"
@@ -69,10 +71,10 @@ func Test_fileDumper_Dump(t *testing.T) {
 		{ID: "counter1", Type: model.Counter, Delta: pkg.Ptr[int64](56)},
 	}
 
-	gaugeRepo.On("GetMetrics").Return(gaugeMetrics)
-	counterRepo.On("GetMetrics").Return(counterMetrics)
+	gaugeRepo.On("GetMetrics", mock.Anything).Return(gaugeMetrics, nil)
+	counterRepo.On("GetMetrics", mock.Anything).Return(counterMetrics, nil)
 
-	err := dumper.Dump(gaugeRepo, counterRepo)
+	err := dumper.Dump(context.Background(), gaugeRepo, counterRepo)
 	require.NoError(t, err)
 
 	storage, err := os.ReadFile(filePath)

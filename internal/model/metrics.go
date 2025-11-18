@@ -29,6 +29,14 @@ func NewCounterMetric(id string) *Metrics[int64] {
 	}
 }
 
+// GetRecord returns delta and value of the metric depending on type.
+func (m *Metrics[T]) GetRecord() (delta *int64, value *float64) {
+	if m.Type == Gauge {
+		return nil, any(m.Value).(*float64)
+	}
+	return any(m.Value).(*int64), nil
+}
+
 // ToDto converts Metrics to MetricsDto.
 func (m *Metrics[T]) ToDto() *MetricsDto {
 	metric := &MetricsDto{
@@ -48,10 +56,10 @@ func (m *Metrics[T]) ToDto() *MetricsDto {
 
 // MetricsDto is a struct for transferring metric data.
 type MetricsDto struct {
-	ID    string   `json:"id"`
-	Type  string   `json:"type"`
-	Value *float64 `json:"value,omitempty"`
-	Delta *int64   `json:"delta,omitempty"`
+	ID    string   `json:"id"              db:"id"`
+	Type  string   `json:"type"            db:"mtype"`
+	Value *float64 `json:"value,omitempty" db:"value"`
+	Delta *int64   `json:"delta,omitempty" db:"delta"`
 }
 
 // ToGaugeMetric converts MetricsDto to a Gauge Metrics.

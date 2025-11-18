@@ -4,24 +4,25 @@ import (
 	"context"
 
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
 // GetMetric retrieves a metric by its type and name.
-func (s *Service) GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, bool) {
+func (s *Service) GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, error) {
 	switch metricType {
 	case model.Gauge:
-		gauge, found := s.gr.Get(metricID)
-		if !found {
-			return nil, false
+		gauge, err := s.gr.Get(ctx, metricID)
+		if err != nil {
+			return nil, errs.Wrap(err)
 		}
-		return gauge.ToDto(), true
+		return gauge.ToDto(), nil
 	case model.Counter:
-		counter, found := s.cr.Get(metricID)
-		if !found {
-			return nil, false
+		counter, err := s.cr.Get(ctx, metricID)
+		if err != nil {
+			return nil, errs.Wrap(err)
 		}
-		return counter.ToDto(), true
+		return counter.ToDto(), nil
 	default:
-		return nil, false
+		return nil, errs.Wrap(errs.ErrInvalidMetricType, metricType)
 	}
 }
