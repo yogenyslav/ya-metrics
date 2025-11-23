@@ -69,7 +69,7 @@ func (p *Postgres) Close() {
 
 // Ping the database.
 func (p *Postgres) Ping(ctx context.Context) error {
-	return p.Ping(ctx)
+	return p.pool.Ping(ctx)
 }
 
 // Exec executes a DML query.
