@@ -17,7 +17,8 @@ const (
 )
 
 type metricService interface {
-	UpdateMetric(ctx context.Context, metricType, metricID, rawValue string) error
+	UpdateMetric(ctx context.Context, metric *model.MetricsDto) error
+	UpdateMetricsBatch(ctx context.Context, metrics []*model.MetricsDto) error
 	GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, error)
 	ListMetrics(ctx context.Context) ([]*model.MetricsDto, error)
 }
@@ -42,6 +43,7 @@ func (h *Handler) RegisterRoutes(router chi.Router) {
 	router.Get("/ping", h.Ping)
 	router.Post("/value/", h.GetMetricJSON)
 	router.Get("/value/{metricType}/{metricID}", h.GetMetricRaw)
+	router.Post("/updates/", h.UpdateMetricsBatch)
 	router.Post(
 		"/update/",
 		h.UpdateMetricJSON,

@@ -28,7 +28,7 @@ type Dumper interface {
 type Server struct {
 	router chi.Router
 	cfg    *config.Config
-	pg     database.DB
+	pg     database.PostgresTxDB
 	dumper Dumper
 }
 

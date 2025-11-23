@@ -70,22 +70,22 @@ func TestService_GetMetric(t *testing.T) {
 			if tt.wantMetric != nil {
 				switch tt.metricType {
 				case model.Gauge:
-					gr.On("Get", mock.Anything, tt.metricID).Return(
+					gr.On("Get", mock.Anything, tt.metricID, model.Gauge).Return(
 						model.NewGaugeMetric(tt.metricID), nil,
 					)
 				case model.Counter:
-					cr.On("Get", mock.Anything, tt.metricID).Return(
+					cr.On("Get", mock.Anything, tt.metricID, model.Counter).Return(
 						model.NewCounterMetric(tt.metricID), nil,
 					)
 				}
 			} else {
 				switch tt.metricType {
 				case model.Gauge:
-					gr.On("Get", mock.Anything, tt.metricID).Return(
+					gr.On("Get", mock.Anything, tt.metricID, model.Gauge).Return(
 						&model.Metrics[float64]{}, errs.ErrMetricNotFound,
 					)
 				case model.Counter:
-					cr.On("Get", mock.Anything, tt.metricID).Return(
+					cr.On("Get", mock.Anything, tt.metricID, model.Counter).Return(
 						&model.Metrics[int64]{}, errs.ErrMetricNotFound,
 					)
 				}

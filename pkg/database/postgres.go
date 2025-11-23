@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -55,10 +56,15 @@ func (p *Postgres) Exec(ctx context.Context, query string, args ...any) (int64, 
 
 // QueryRow executes a DQL query that must return at most one row.
 func (p *Postgres) QueryRow(ctx context.Context, dst any, query string, args ...any) error {
-	return pgxscan.Get(ctx, p.pool, dst, query, args)
+	return pgxscan.Get(ctx, p.pool, dst, query, args...)
 }
 
 // QuerySlice executes a DQL query that returns multiple rows.
 func (p *Postgres) QuerySlice(ctx context.Context, dst any, query string, args ...any) error {
-	return pgxscan.Select(ctx, p.pool, dst, query, args)
+	return pgxscan.Select(ctx, p.pool, dst, query, args...)
+}
+
+// BeginTx starts a new transaction.
+func (p *Postgres) BeginTx(ctx context.Context) (pgx.Tx, error) {
+	return p.pool.BeginTx(ctx, pgx.TxOptions{})
 }

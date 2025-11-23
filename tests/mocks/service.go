@@ -11,8 +11,14 @@ type MockMetricService struct {
 	mock.Mock
 }
 
-func (m *MockMetricService) UpdateMetric(ctx context.Context, metricType, metricID, metricValueRaw string) error {
-	args := m.Called(ctx, metricType, metricID, metricValueRaw)
+func (m *MockMetricService) UpdateMetric(ctx context.Context, metric *model.MetricsDto) error {
+	args := m.Called(ctx, metric)
+	m.ExpectedCalls = m.ExpectedCalls[1:]
+	return args.Error(0)
+}
+
+func (m *MockMetricService) UpdateMetricsBatch(ctx context.Context, metrics []*model.MetricsDto) error {
+	args := m.Called(ctx, metrics)
 	m.ExpectedCalls = m.ExpectedCalls[1:]
 	return args.Error(0)
 }

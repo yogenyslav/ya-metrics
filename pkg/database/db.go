@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // DB defines methods to operate with DB.
@@ -15,4 +17,12 @@ type DB interface {
 	Ping(ctx context.Context) error
 	SQLDB() (*sql.DB, error)
 	Close()
+}
+
+// PostgresTxDB defines transactional methods for pg.
+//
+//go:generate mockgen -destination=../../tests/mocks/pg_tx_db.go -package=mocks . PostgresTxDB
+type PostgresTxDB interface {
+	DB
+	BeginTx(ctx context.Context) (pgx.Tx, error)
 }
