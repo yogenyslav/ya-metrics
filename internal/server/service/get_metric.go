@@ -11,13 +11,13 @@ import (
 func (s *Service) GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, error) {
 	switch metricType {
 	case model.Gauge:
-		gauge, err := s.gr.Get(ctx, metricID)
+		gauge, err := s.gr.Get(ctx, metricID, metricType)
 		if err != nil {
 			return nil, errs.Wrap(err)
 		}
 		return gauge.ToDto(), nil
 	case model.Counter:
-		counter, err := s.cr.Get(ctx, metricID)
+		counter, err := s.cr.Get(ctx, metricID, metricType)
 		if err != nil {
 			return nil, errs.Wrap(err)
 		}

@@ -81,8 +81,8 @@ func (r *MetricInMemRepo[T]) GetMetrics(_ context.Context) ([]*model.MetricsDto,
 }
 
 // Get returns the value of a metric by its name and a bool flag to check if it exists.
-func (r *MetricInMemRepo[T]) Get(_ context.Context, name string) (*model.Metrics[T], error) {
-	value, exists := r.storage[name]
+func (r *MetricInMemRepo[T]) Get(_ context.Context, metricName, _ string) (*model.Metrics[T], error) {
+	value, exists := r.storage[metricName]
 	if !exists {
 		return nil, errors.New("value not found")
 	}
@@ -90,21 +90,45 @@ func (r *MetricInMemRepo[T]) Get(_ context.Context, name string) (*model.Metrics
 }
 
 // Set sets the value of a metric by its name.
-func (r *MetricInMemRepo[T]) Set(_ context.Context, name string, value T, tp string) error {
-	if metric, ok := r.storage[name]; ok {
-		metric.Value = value
+func (r *MetricInMemRepo[T]) Set(_ context.Context, m *model.Metrics[T]) error {
+	if metric, ok := r.storage[m.ID]; ok {
+		metric.Value = m.Value
 	} else {
-		r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: value}
+		r.storage[m.ID] = m
 	}
 	return nil
 }
 
 // Update updates the value of a metric by adding the delta to the current value.
-func (r *MetricInMemRepo[T]) Update(_ context.Context, name string, delta T, tp string) error {
-	if metric, exists := r.storage[name]; exists {
-		metric.Value += delta
+func (r *MetricInMemRepo[T]) Update(_ context.Context, m *model.Metrics[T]) error {
+	if metric, exists := r.storage[m.ID]; exists {
+		metric.Value += m.Value
 	} else {
-		r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: delta}
+		r.storage[m.ID] = m
+	}
+	return nil
+}
+
+// UpdateBatch updates a batch of metrics by adding their deltas to the current values.
+func (r *MetricInMemRepo[T]) UpdateBatch(_ context.Context, ms []*model.Metrics[T]) error {
+	for _, m := range ms {
+		if metric, exists := r.storage[m.ID]; exists {
+			metric.Value += m.Value
+		} else {
+			r.storage[m.ID] = m
+		}
+	}
+	return nil
+}
+
+// SetBatch sets a batch of metrics to the given values.
+func (r *MetricInMemRepo[T]) SetBatch(_ context.Context, ms []*model.Metrics[T]) error {
+	for _, m := range ms {
+		if metric, ok := r.storage[m.ID]; ok {
+			metric.Value = m.Value
+		} else {
+			r.storage[m.ID] = m
+		}
 	}
 	return nil
 }
