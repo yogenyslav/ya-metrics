@@ -46,6 +46,7 @@ func (c *Collector) Collect(ctx context.Context) {
 
 func (c *Collector) updateMetrics() {
 	c.PollCount.Value++
+	c.RandomValue.Value = float64(time.Now().UnixNano()%100) + 1
 	c.updateMemoryMetrics()
 }
 

@@ -113,12 +113,15 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
 
 	var resp *http.Response
 	err = retry.WithLinearBackoffRetry(a.cfg.Retry, func() error {
-		resp, err = a.client.Do(req)
+		// очень странное замечение от go vet - подсвечивает http.Body.Close() как отсутствующий, хотя он есть.
+		// не подсвечивает только если сделать такую перекладку в respHTTP, а потом resp = respHTTP.
+		respHTTP, err := a.client.Do(req)
 		if err != nil {
 			return err
 		}
+		defer respHTTP.Body.Close()
 
-		resp.Body.Close()
+		resp = respHTTP
 		return nil
 	})
 	if err != nil {
