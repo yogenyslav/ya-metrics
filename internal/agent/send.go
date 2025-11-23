@@ -114,13 +114,16 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
 	var resp *http.Response
 	err = retry.WithLinearBackoffRetry(a.cfg.Retry, func() error {
 		resp, err = a.client.Do(req)
-		return err
+		if err != nil {
+			return err
+		}
+
+		resp.Body.Close()
+		return nil
 	})
 	if err != nil {
 		return errs.Wrap(err, "send request")
 	}
-
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return errs.Wrap(ErrUpdateMetric, fmt.Sprintf("status code: %d", resp.StatusCode))
