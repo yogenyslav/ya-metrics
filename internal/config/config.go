@@ -6,6 +6,7 @@ import (
 
 	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
+	"github.com/yogenyslav/ya-metrics/pkg/retry"
 )
 
 const (
@@ -36,6 +37,7 @@ type Config struct {
 	Server *ServerConfig
 	Dump   *DumpConfig
 	DB     *DatabaseConfig
+	Retry  *retry.Config
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -69,6 +71,10 @@ func NewConfig() (*Config, error) {
 		},
 		DB: &DatabaseConfig{
 			Dsn: pkg.GetEnv("DATABASE_DSN", *dbDsnFlag),
+		},
+		Retry: &retry.Config{
+			MaxRetries:         retry.DefaultRetries,
+			LinearBackoffMilli: retry.DefaultLinearBackoffMilli,
 		},
 	}, nil
 }

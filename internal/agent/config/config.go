@@ -7,6 +7,7 @@ import (
 
 	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
+	"github.com/yogenyslav/ya-metrics/pkg/retry"
 )
 
 const (
@@ -21,6 +22,7 @@ type Config struct {
 	PollIntervalSec   int
 	ReportIntervalSec int
 	CompressionType   string
+	Retry             *retry.Config
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -46,5 +48,9 @@ func NewConfig() (*Config, error) {
 		PollIntervalSec:   pkg.GetEnv("POLL_INTERVAL", *pollIntervalFlag),
 		ReportIntervalSec: pkg.GetEnv("REPORT_INTERVAL", *reportIntervalFlag),
 		CompressionType:   pkg.GetEnv("COMPRESSION_TYPE", *compressionTypeFlag),
+		Retry: &retry.Config{
+			MaxRetries:         retry.DefaultRetries,
+			LinearBackoffMilli: retry.DefaultLinearBackoffMilli,
+		},
 	}, nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/internal/agent/collector"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
+	"github.com/yogenyslav/ya-metrics/pkg/retry"
 )
 
 // Start begins the metric collection and reporting process.
@@ -110,10 +111,15 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
 		req.Header.Set("Content-Encoding", a.cfg.CompressionType)
 	}
 
-	resp, err := a.client.Do(req)
+	var resp *http.Response
+	err = retry.WithLinearBackoffRetry(a.cfg.Retry, func() error {
+		resp, err = a.client.Do(req)
+		return err
+	})
 	if err != nil {
 		return errs.Wrap(err, "send request")
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
