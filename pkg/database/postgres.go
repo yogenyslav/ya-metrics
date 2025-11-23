@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 	"github.com/yogenyslav/ya-metrics/pkg/retry"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -34,6 +35,24 @@ func NewPostgres(ctx context.Context, dsn string, retryCfg *retry.Config) (*Post
 	}, nil
 }
 
+func isPgErrRetriable(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case pgerrcode.ConnectionException, pgerrcode.ConnectionDoesNotExist, pgerrcode.ConnectionFailure,
+			pgerrcode.SQLClientUnableToEstablishSQLConnection, pgerrcode.SQLServerRejectedEstablishmentOfSQLConnection,
+			pgerrcode.TransactionResolutionUnknown, pgerrcode.ProtocolViolation:
+			return err
+		}
+	}
+
+	return errs.Wrap(retry.ErrUnretriable, err.Error())
+}
+
 // SQLDB return a sql.DB format database conn.
 func (p *Postgres) SQLDB() (*sql.DB, error) {
 	db, err := sql.Open("pgx", p.pool.Config().ConnString())
@@ -50,21 +69,7 @@ func (p *Postgres) Close() {
 
 // Ping the database.
 func (p *Postgres) Ping(ctx context.Context) error {
-	return retry.WithLinearBackoffRetry(p.retryCfg, func() error {
-		err := p.pool.Ping(ctx)
-
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			switch pgErr.Code {
-			case pgerrcode.ConnectionException, pgerrcode.ConnectionDoesNotExist, pgerrcode.ConnectionFailure,
-				pgerrcode.SQLClientUnableToEstablishSQLConnection, pgerrcode.SQLServerRejectedEstablishmentOfSQLConnection,
-				pgerrcode.TransactionResolutionUnknown, pgerrcode.ProtocolViolation:
-				return err
-			}
-		}
-
-		return retry.ErrUnretriable
-	})
+	return p.Ping(ctx)
 }
 
 // Exec executes a DML query.
@@ -76,7 +81,7 @@ func (p *Postgres) Exec(ctx context.Context, query string, args ...any) (int64, 
 
 	err = retry.WithLinearBackoffRetry(p.retryCfg, func() error {
 		tag, err = p.pool.Exec(ctx, query, args...)
-		return err
+		return isPgErrRetriable(err)
 	})
 	if err != nil {
 		return 0, err
@@ -88,14 +93,16 @@ func (p *Postgres) Exec(ctx context.Context, query string, args ...any) (int64, 
 // QueryRow executes a DQL query that must return at most one row.
 func (p *Postgres) QueryRow(ctx context.Context, dst any, query string, args ...any) error {
 	return retry.WithLinearBackoffRetry(p.retryCfg, func() error {
-		return pgxscan.Get(ctx, p.pool, dst, query, args...)
+		err := pgxscan.Get(ctx, p.pool, dst, query, args...)
+		return isPgErrRetriable(err)
 	})
 }
 
 // QuerySlice executes a DQL query that returns multiple rows.
 func (p *Postgres) QuerySlice(ctx context.Context, dst any, query string, args ...any) error {
 	return retry.WithLinearBackoffRetry(p.retryCfg, func() error {
-		return pgxscan.Select(ctx, p.pool, dst, query, args...)
+		err := pgxscan.Select(ctx, p.pool, dst, query, args...)
+		return isPgErrRetriable(err)
 	})
 }
 
@@ -108,7 +115,7 @@ func (p *Postgres) BeginTx(ctx context.Context) (pgx.Tx, error) {
 
 	err = retry.WithLinearBackoffRetry(p.retryCfg, func() error {
 		tx, err = p.pool.BeginTx(ctx, pgx.TxOptions{})
-		return err
+		return isPgErrRetriable(err)
 	})
 	if err != nil {
 		return nil, err
