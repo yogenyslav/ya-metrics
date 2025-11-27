@@ -1,6 +1,7 @@
 package retry
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -21,16 +22,18 @@ type Config struct {
 	LinearBackoffMilli int
 }
 
+type RetryableFunc func(ctx context.Context) error
+
 // WithLinearBackoffRetry is a wrapper for retry logic with linear backoff.
-func WithLinearBackoffRetry(cfg *Config, fn func() error) error {
+func WithLinearBackoffRetry(ctx context.Context, cfg *Config, fn RetryableFunc) error {
 	var err error
 
 	if cfg == nil {
-		return fn()
+		return fn(ctx)
 	}
 
 	for i := 0; i <= cfg.MaxRetries; i++ {
-		err = fn()
+		err = fn(ctx)
 
 		if err == nil {
 			return nil

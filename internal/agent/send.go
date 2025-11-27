@@ -5,7 +5,9 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -111,25 +113,32 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
 		req.Header.Set("Content-Encoding", a.cfg.CompressionType)
 	}
 
-	var resp *http.Response
-	err = retry.WithLinearBackoffRetry(a.cfg.Retry, func() error {
-		// очень странное замечение от go vet - подсвечивает http.Body.Close() как отсутствующий, хотя он есть.
-		// не подсвечивает только если сделать такую перекладку в respHTTP, а потом resp = respHTTP.
-		respHTTP, err := a.client.Do(req)
+	var buff bytes.Buffer
+	err = retry.WithLinearBackoffRetry(ctx, a.cfg.Retry, func(context.Context) error {
+		resp, err := a.client.Do(req)
 		if err != nil {
 			return err
 		}
-		defer respHTTP.Body.Close()
+		defer resp.Body.Close()
 
-		resp = respHTTP
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return fmt.Errorf("got status code: %d", resp.StatusCode)
+		} else if resp.StatusCode >= http.StatusBadRequest {
+			return errs.Wrap(retry.ErrUnretriable, fmt.Sprintf("got status code: %d", resp.StatusCode))
+		}
+
+		_, err = io.Copy(&buff, resp.Body)
+		if err != nil {
+			return errs.Wrap(retry.ErrUnretriable, err.Error())
+		}
+
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, retry.ErrUnretriable) {
+			return errs.Wrap(ErrUpdateMetric)
+		}
 		return errs.Wrap(err, "send request")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return errs.Wrap(ErrUpdateMetric, fmt.Sprintf("status code: %d", resp.StatusCode))
 	}
 
 	return nil

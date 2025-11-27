@@ -79,7 +79,7 @@ func (p *Postgres) Exec(ctx context.Context, query string, args ...any) (int64, 
 		err error
 	)
 
-	err = retry.WithLinearBackoffRetry(p.retryCfg, func() error {
+	err = retry.WithLinearBackoffRetry(ctx, p.retryCfg, func(ctx context.Context) error {
 		tag, err = p.pool.Exec(ctx, query, args...)
 		return isPgErrRetriable(err)
 	})
@@ -92,7 +92,7 @@ func (p *Postgres) Exec(ctx context.Context, query string, args ...any) (int64, 
 
 // QueryRow executes a DQL query that must return at most one row.
 func (p *Postgres) QueryRow(ctx context.Context, dst any, query string, args ...any) error {
-	return retry.WithLinearBackoffRetry(p.retryCfg, func() error {
+	return retry.WithLinearBackoffRetry(ctx, p.retryCfg, func(ctx context.Context) error {
 		err := pgxscan.Get(ctx, p.pool, dst, query, args...)
 		return isPgErrRetriable(err)
 	})
@@ -100,7 +100,7 @@ func (p *Postgres) QueryRow(ctx context.Context, dst any, query string, args ...
 
 // QuerySlice executes a DQL query that returns multiple rows.
 func (p *Postgres) QuerySlice(ctx context.Context, dst any, query string, args ...any) error {
-	return retry.WithLinearBackoffRetry(p.retryCfg, func() error {
+	return retry.WithLinearBackoffRetry(ctx, p.retryCfg, func(ctx context.Context) error {
 		err := pgxscan.Select(ctx, p.pool, dst, query, args...)
 		return isPgErrRetriable(err)
 	})
@@ -113,7 +113,7 @@ func (p *Postgres) BeginTx(ctx context.Context) (pgx.Tx, error) {
 		tx  pgx.Tx
 	)
 
-	err = retry.WithLinearBackoffRetry(p.retryCfg, func() error {
+	err = retry.WithLinearBackoffRetry(ctx, p.retryCfg, func(ctx context.Context) error {
 		tx, err = p.pool.BeginTx(ctx, pgx.TxOptions{})
 		return isPgErrRetriable(err)
 	})

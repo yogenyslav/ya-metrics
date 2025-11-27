@@ -1,6 +1,7 @@
 package retry_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -14,7 +15,7 @@ func TestWithLinearBackoffRetry(t *testing.T) {
 	tests := []struct {
 		name    string
 		cfg     *retry.Config
-		fn      func() error
+		fn      func(context.Context) error
 		wantErr bool
 	}{
 		{
@@ -23,7 +24,7 @@ func TestWithLinearBackoffRetry(t *testing.T) {
 				MaxRetries:         3,
 				LinearBackoffMilli: 100,
 			},
-			fn: func() error {
+			fn: func(context.Context) error {
 				return nil
 			},
 			wantErr: false,
@@ -34,9 +35,9 @@ func TestWithLinearBackoffRetry(t *testing.T) {
 				MaxRetries:         3,
 				LinearBackoffMilli: 100,
 			},
-			fn: func() func() error {
+			fn: func() func(context.Context) error {
 				cnt := 0
-				return func() error {
+				return func(context.Context) error {
 					if cnt < 2 {
 						cnt++
 						return errors.New("err")
@@ -52,7 +53,7 @@ func TestWithLinearBackoffRetry(t *testing.T) {
 				MaxRetries:         2,
 				LinearBackoffMilli: 100,
 			},
-			fn: func() error {
+			fn: func(context.Context) error {
 				return errors.New("err")
 			},
 			wantErr: true,
@@ -60,7 +61,7 @@ func TestWithLinearBackoffRetry(t *testing.T) {
 		{
 			name: "Nil config",
 			cfg:  nil,
-			fn: func() error {
+			fn: func(context.Context) error {
 				return nil
 			},
 			wantErr: false,
@@ -68,7 +69,7 @@ func TestWithLinearBackoffRetry(t *testing.T) {
 		{
 			name: "Nil config with error",
 			cfg:  nil,
-			fn: func() error {
+			fn: func(context.Context) error {
 				return errors.New("err")
 			},
 			wantErr: true,
@@ -79,7 +80,7 @@ func TestWithLinearBackoffRetry(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := retry.WithLinearBackoffRetry(tt.cfg, tt.fn)
+			err := retry.WithLinearBackoffRetry(context.Background(), tt.cfg, tt.fn)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
