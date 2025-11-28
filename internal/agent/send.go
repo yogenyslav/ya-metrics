@@ -5,7 +5,9 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,6 +18,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/internal/agent/collector"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
+	"github.com/yogenyslav/ya-metrics/pkg/retry"
 )
 
 // Start begins the metric collection and reporting process.
@@ -110,14 +113,32 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
 		req.Header.Set("Content-Encoding", a.cfg.CompressionType)
 	}
 
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return errs.Wrap(err, "send request")
-	}
-	defer resp.Body.Close()
+	var buff bytes.Buffer
+	err = retry.WithLinearBackoffRetry(ctx, a.cfg.Retry, func(context.Context) error {
+		resp, err := a.client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return errs.Wrap(ErrUpdateMetric, fmt.Sprintf("status code: %d", resp.StatusCode))
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return fmt.Errorf("got status code: %d", resp.StatusCode)
+		} else if resp.StatusCode >= http.StatusBadRequest {
+			return errs.Wrap(retry.ErrUnretriable, fmt.Sprintf("got status code: %d", resp.StatusCode))
+		}
+
+		_, err = io.Copy(&buff, resp.Body)
+		if err != nil {
+			return errs.Wrap(retry.ErrUnretriable, err.Error())
+		}
+
+		return nil
+	})
+	if err != nil {
+		if errors.Is(err, retry.ErrUnretriable) {
+			return errs.Wrap(ErrUpdateMetric)
+		}
+		return errs.Wrap(err, "send request")
 	}
 
 	return nil

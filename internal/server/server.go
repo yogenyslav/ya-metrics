@@ -19,6 +19,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
+// Dumper is an interface for metrics dumping.
 type Dumper interface {
 	middleware.Dumper
 	Start(ctx context.Context, gaugeRepo repository.Repo, counterRepo repository.Repo)
@@ -48,7 +49,7 @@ func NewServer(
 
 	switch {
 	case cfg.DB.Dsn != "":
-		pg, err := database.NewPostgres(context.Background(), cfg.DB.Dsn)
+		pg, err := database.NewPostgres(context.Background(), cfg.DB.Dsn, cfg.Retry)
 		if err != nil {
 			return nil, errs.Wrap(err, "connect to database")
 		}

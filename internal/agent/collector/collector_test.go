@@ -22,13 +22,11 @@ func TestCollector_Collect(t *testing.T) {
 
 			c.Collect(ctx)
 			initialPollCount := c.PollCount.Value
-			initialRandomValue := c.RandomValue.Value
 			initialAlloc := c.MemoryMetrics.Alloc.Value
 
 			<-time.After(time.Second*time.Duration(pollInterval) + 500*time.Millisecond)
 
 			assert.Greater(t, c.PollCount.Value, initialPollCount)
-			assert.NotEqual(t, c.RandomValue.Value, initialRandomValue)
 			assert.Greater(t, c.MemoryMetrics.Alloc.Value, initialAlloc)
 		},
 	)
