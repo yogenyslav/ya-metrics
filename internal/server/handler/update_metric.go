@@ -21,7 +21,29 @@ func (h *Handler) UpdateMetricRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.ms.UpdateMetric(r.Context(), metricType, metricID, metricValueRaw); err != nil {
+	m := &model.MetricsDto{
+		ID:   metricID,
+		Type: metricType,
+	}
+
+	switch metricType {
+	case model.Gauge:
+		gaugeValue, err := strconv.ParseFloat(metricValueRaw, 64)
+		if err != nil {
+			h.sendError(w, errs.Wrap(errs.ErrInvalidMetricValue, err.Error()))
+			return
+		}
+		m.Value = &gaugeValue
+	case model.Counter:
+		counterValue, err := strconv.ParseInt(metricValueRaw, 10, 64)
+		if err != nil {
+			h.sendError(w, errs.Wrap(errs.ErrInvalidMetricValue, err.Error()))
+			return
+		}
+		m.Delta = &counterValue
+	}
+
+	if err := h.ms.UpdateMetric(r.Context(), m); err != nil {
 		h.sendError(w, errs.Wrap(err))
 		return
 	}
@@ -49,15 +71,38 @@ func (h *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var metricRawValue string
-	switch {
-	case req.Type == model.Gauge && req.Value != nil:
-		metricRawValue = strconv.FormatFloat(*req.Value, 'f', -1, 64)
-	case req.Type == model.Counter && req.Delta != nil:
-		metricRawValue = strconv.FormatInt(*req.Delta, 10)
+	if err := h.ms.UpdateMetric(r.Context(), &req); err != nil {
+		h.sendError(w, errs.Wrap(err))
+		return
 	}
 
-	if err := h.ms.UpdateMetric(r.Context(), req.Type, req.ID, metricRawValue); err != nil {
+	w.WriteHeader(http.StatusOK)
+}
+
+// UpdateMetricsBatch handles batch metric update requests.
+func (h *Handler) UpdateMetricsBatch(w http.ResponseWriter, r *http.Request) {
+	var req []*model.MetricsDto
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		h.sendError(w, errs.Wrap(err))
+		return
+	}
+
+	if err := json.Unmarshal(body, &req); err != nil {
+		h.sendError(w, errs.Wrap(errs.ErrInvalidJSON, err.Error()))
+		return
+	}
+
+	for _, m := range req {
+		if m.ID == "" {
+			h.sendError(w, errs.Wrap(errs.ErrNoMetricID))
+			return
+		}
+	}
+
+	err = h.ms.UpdateMetricsBatch(r.Context(), req)
+	if err != nil {
 		h.sendError(w, errs.Wrap(err))
 		return
 	}

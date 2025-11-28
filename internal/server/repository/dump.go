@@ -12,7 +12,7 @@ import (
 )
 
 type Repo interface {
-	GetMetrics() []*model.MetricsDto
+	GetMetrics(ctx context.Context) ([]*model.MetricsDto, error)
 }
 
 // fileDumper is a struct to dump data to file.
@@ -46,7 +46,7 @@ func (d *fileDumper) Start(ctx context.Context, gaugeRepo Repo, counterRepo Repo
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				err = d.Dump(gaugeRepo, counterRepo)
+				err = d.Dump(ctx, gaugeRepo, counterRepo)
 				if err != nil {
 					log.Ctx(ctx).Err(errs.Wrap(err)).Msg("dump metrics to file")
 				}
@@ -56,9 +56,15 @@ func (d *fileDumper) Start(ctx context.Context, gaugeRepo Repo, counterRepo Repo
 }
 
 // Dump data to file.
-func (d *fileDumper) Dump(gaugeRepo Repo, counterRepo Repo) error {
-	gaugeMetrics := gaugeRepo.GetMetrics()
-	counterMetrics := counterRepo.GetMetrics()
+func (d *fileDumper) Dump(ctx context.Context, gaugeRepo Repo, counterRepo Repo) error {
+	gaugeMetrics, err := gaugeRepo.GetMetrics(ctx)
+	if err != nil {
+		return errs.Wrap(err, "get gauge metrics")
+	}
+	counterMetrics, err := counterRepo.GetMetrics(ctx)
+	if err != nil {
+		return errs.Wrap(err, "get counter metrics")
+	}
 
 	v := make([]*model.MetricsDto, 0, len(gaugeMetrics)+len(counterMetrics))
 	v = append(v, gaugeMetrics...)

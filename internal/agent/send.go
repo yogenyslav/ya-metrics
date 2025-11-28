@@ -5,44 +5,21 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/yogenyslav/ya-metrics/internal/agent/collector"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
+	"github.com/yogenyslav/ya-metrics/pkg/retry"
 )
-
-type combinedError struct {
-	err []error
-}
-
-// NewCombinedError creates an instance of combinedError.
-func NewCombinedError() *combinedError {
-	return &combinedError{
-		err: make([]error, 0),
-	}
-}
-
-// Error implements the error interface.
-func (e *combinedError) Error() string {
-	b := strings.Builder{}
-	for _, err := range e.err {
-		b.WriteString(err.Error() + "; ")
-	}
-	return b.String()
-}
-
-// Add an error to combinedError.
-func (e *combinedError) Add(err error) {
-	e.err = append(e.err, err)
-}
 
 // Start begins the metric collection and reporting process.
 func (a *Agent) Start() error {
@@ -78,41 +55,39 @@ func (a *Agent) Start() error {
 }
 
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
-	var err error
-	combinedErr := NewCombinedError()
-
 	gaugeMetrics := coll.GetAllGaugeMetrics()
+	counterMetrics := coll.GetAllCounterMetrics()
+
+	metrics := make([]*model.MetricsDto, 0, len(gaugeMetrics)+len(counterMetrics))
+
 	for _, metric := range gaugeMetrics {
-		err = sendMetric(ctx, metric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
-		if err != nil {
-			combinedErr.Add(err)
-		}
+		metrics = append(metrics, metric.ToDto())
 	}
 
-	counterMetric := coll.PollCount
-	err = sendMetric(ctx, counterMetric, a.cfg.ServerAddr, a.client, a.cfg.CompressionType)
+	for _, metric := range counterMetrics {
+		metrics = append(metrics, metric.ToDto())
+	}
+
+	buf, err := a.encodeMetrics(metrics)
 	if err != nil {
-		combinedErr.Add(err)
+		return errs.Wrap(err, "encode metrics")
 	}
 
-	return errs.Wrap(combinedErr, "send all metrics")
+	if err = a.sendMetricsBatch(ctx, buf); err != nil {
+		return errs.Wrap(err, "send metrics batch")
+	}
+
+	return nil
 }
 
-func sendMetric[T int64 | float64](
-	ctx context.Context,
-	metric *model.Metrics[T],
-	host string,
-	client Client,
-	compressionType string,
-) error {
-	data := metric.ToDto()
-	body, err := json.Marshal(data)
+func (a *Agent) encodeMetrics(metrics []*model.MetricsDto) (*bytes.Buffer, error) {
+	body, err := json.Marshal(metrics)
 	if err != nil {
-		return errs.Wrap(err, "marshal metric")
+		return nil, errs.Wrap(err, "marshal metric")
 	}
 
 	buf := &bytes.Buffer{}
-	switch compressionType {
+	switch a.cfg.CompressionType {
 	case "gzip":
 		gz := gzip.NewWriter(buf)
 		gz.Write(body)
@@ -121,32 +96,49 @@ func sendMetric[T int64 | float64](
 		buf.Write(body)
 	}
 
+	return buf, nil
+}
+
+func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
 	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost, host+"/update/", buf,
+		ctx, http.MethodPost, a.cfg.ServerAddr+"/updates/", buf,
 	)
 	if err != nil {
 		return errs.Wrap(err, "create request")
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if compressionType != "" {
-		req.Header.Set("Accept-Encoding", compressionType)
-		req.Header.Set("Content-Encoding", compressionType)
+	if a.cfg.CompressionType != "" {
+		req.Header.Set("Accept-Encoding", a.cfg.CompressionType)
+		req.Header.Set("Content-Encoding", a.cfg.CompressionType)
 	}
 
-	resp, err := client.Do(req)
+	var buff bytes.Buffer
+	err = retry.WithLinearBackoffRetry(ctx, a.cfg.Retry, func(context.Context) error {
+		resp, err := a.client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= http.StatusInternalServerError {
+			return fmt.Errorf("got status code: %d", resp.StatusCode)
+		} else if resp.StatusCode >= http.StatusBadRequest {
+			return errs.Wrap(retry.ErrUnretriable, fmt.Sprintf("got status code: %d", resp.StatusCode))
+		}
+
+		_, err = io.Copy(&buff, resp.Body)
+		if err != nil {
+			return errs.Wrap(retry.ErrUnretriable, err.Error())
+		}
+
+		return nil
+	})
 	if err != nil {
+		if errors.Is(err, retry.ErrUnretriable) {
+			return errs.Wrap(ErrUpdateMetric)
+		}
 		return errs.Wrap(err, "send request")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return errs.Wrap(
-			ErrUpdateMetric, fmt.Sprintf(
-				"metric '%s' of type '%s' with value '%v' not updated, status code: %d", metric.ID, metric.Type,
-				metric.Value, resp.StatusCode,
-			),
-		)
 	}
 
 	return nil

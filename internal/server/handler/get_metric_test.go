@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg"
+	"github.com/yogenyslav/ya-metrics/pkg/database"
+	"github.com/yogenyslav/ya-metrics/tests/mocks"
 )
 
 func TestHandler_GetMetric(t *testing.T) {
@@ -20,6 +23,7 @@ func TestHandler_GetMetric(t *testing.T) {
 	tests := []struct {
 		name       string
 		ms         func() metricService
+		db         database.DB
 		metricType string
 		metricID   string
 		wantCode   int
@@ -27,11 +31,15 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric gauge with existing metric",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Gauge, "metric1").
-					Return(model.NewGaugeMetric("metric1").ToDto(), true)
+					Return(model.NewGaugeMetric("metric1").ToDto(), nil)
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType: model.Gauge,
 			metricID:   "metric1",
 			wantCode:   http.StatusOK,
@@ -39,11 +47,15 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric counter with existing metric",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Counter, "metric1").
-					Return(model.NewCounterMetric("metric1").ToDto(), true)
+					Return(model.NewCounterMetric("metric1").ToDto(), nil)
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType: model.Counter,
 			metricID:   "metric1",
 			wantCode:   http.StatusOK,
@@ -51,11 +63,15 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric with non-existing metric",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Gauge, "non_existing_metric").
-					Return((*model.MetricsDto)(nil), false)
+					Return((*model.MetricsDto)(nil), errors.New("not found"))
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType: model.Gauge,
 			metricID:   "non_existing_metric",
 			wantCode:   http.StatusNotFound,
@@ -63,11 +79,15 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric with invalid metric type",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, "invalid", "metric1").
-					Return((*model.MetricsDto)(nil), false)
+					Return((*model.MetricsDto)(nil), errors.New("invalid metric type"))
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType: "invalid",
 			metricID:   "metric1",
 			wantCode:   http.StatusNotFound,
@@ -75,11 +95,15 @@ func TestHandler_GetMetric(t *testing.T) {
 		{
 			name: "GetMetric with missing metric name",
 			ms: func() metricService {
-				m := new(MockMetricService)
+				m := new(mocks.MockMetricService)
 				m.On("GetMetric", mock.Anything, model.Gauge, "").
-					Return((*model.MetricsDto)(nil), false)
+					Return((*model.MetricsDto)(nil), errors.New("metric ID is required"))
 				return m
 			},
+			db: func() *mocks.MockDB {
+				m := new(mocks.MockDB)
+				return m
+			}(),
 			metricType: model.Gauge,
 			metricID:   "",
 			wantCode:   http.StatusNotFound,
@@ -93,7 +117,7 @@ func TestHandler_GetMetric(t *testing.T) {
 			t.Run(tt.name+" raw request", func(t *testing.T) {
 				t.Parallel()
 
-				h := NewHandler(tt.ms())
+				h := NewHandler(tt.ms(), tt.db)
 				writer := httptest.NewRecorder()
 
 				req := httptest.NewRequest(
@@ -115,7 +139,7 @@ func TestHandler_GetMetric(t *testing.T) {
 			t.Run(tt.name+"json request", func(t *testing.T) {
 				t.Parallel()
 
-				h := NewHandler(tt.ms())
+				h := NewHandler(tt.ms(), tt.db)
 				writer := httptest.NewRecorder()
 
 				data := model.MetricsDto{

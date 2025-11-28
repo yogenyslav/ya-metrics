@@ -25,3 +25,9 @@ var (
 	// ErrInvalidJSON is an error when the provided JSON is invalid.
 	ErrInvalidJSON = errors.New("invalid JSON")
 )
+
+// 500.
+var (
+	// ErrDatabaseUnavailable is an error when the database is unavailable.
+	ErrDatabaseUnavailable = errors.New("database unavailable")
+)

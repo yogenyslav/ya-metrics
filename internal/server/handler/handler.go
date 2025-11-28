@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/pkg/database"
 )
 
 const (
@@ -16,28 +17,33 @@ const (
 )
 
 type metricService interface {
-	UpdateMetric(ctx context.Context, metricType, metricID, rawValue string) error
-	GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, bool)
-	ListMetrics(ctx context.Context) []*model.MetricsDto
+	UpdateMetric(ctx context.Context, metric *model.MetricsDto) error
+	UpdateMetricsBatch(ctx context.Context, metrics []*model.MetricsDto) error
+	GetMetric(ctx context.Context, metricType, metricID string) (*model.MetricsDto, error)
+	ListMetrics(ctx context.Context) ([]*model.MetricsDto, error)
 }
 
 // Handler serves HTTP requests.
 type Handler struct {
 	ms metricService
+	db database.DB
 }
 
 // NewHandler creates new HTTP handler.
-func NewHandler(ms metricService) *Handler {
+func NewHandler(ms metricService, db database.DB) *Handler {
 	return &Handler{
 		ms: ms,
+		db: db,
 	}
 }
 
 // RegisterRoutes registers HTTP routes.
 func (h *Handler) RegisterRoutes(router chi.Router) {
 	router.Get("/", h.ListMetrics)
+	router.Get("/ping", h.Ping)
 	router.Post("/value/", h.GetMetricJSON)
 	router.Get("/value/{metricType}/{metricID}", h.GetMetricRaw)
+	router.Post("/updates/", h.UpdateMetricsBatch)
 	router.Post(
 		"/update/",
 		h.UpdateMetricJSON,

@@ -1,0 +1,15 @@
+name: ya-metrics
+services:
+  pg:
+    image: postgres:17
+    restart: unless-stopped
+    container_name: metrics-db
+    env_file:
+      - ../.env
+    ports: # это compose для локальной разработки, поэтому просто прокину порт на машинку.
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:

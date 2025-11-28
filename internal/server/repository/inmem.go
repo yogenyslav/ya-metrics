@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/yogenyslav/ya-metrics/internal/model"
@@ -70,43 +72,72 @@ func NewMetricInMemRepo[T int64 | float64](state StorageState[T]) *MetricInMemRe
 }
 
 // GetMetrics returns all metrics in MetricsDto format.
-func (r *MetricInMemRepo[T]) GetMetrics() []*model.MetricsDto {
+func (r *MetricInMemRepo[T]) GetMetrics(_ context.Context) ([]*model.MetricsDto, error) {
 	metrics := make([]*model.MetricsDto, 0, len(r.storage))
 	for _, metric := range r.storage {
 		metrics = append(metrics, metric.ToDto())
 	}
-	return metrics
+	return metrics, nil
 }
 
 // Get returns the value of a metric by its name and a bool flag to check if it exists.
-func (r *MetricInMemRepo[T]) Get(name string) (*model.Metrics[T], bool) {
-	value, exists := r.storage[name]
-	return value, exists
+func (r *MetricInMemRepo[T]) Get(_ context.Context, metricName, _ string) (*model.Metrics[T], error) {
+	value, exists := r.storage[metricName]
+	if !exists {
+		return nil, errors.New("value not found")
+	}
+	return value, nil
 }
 
 // Set sets the value of a metric by its name.
-func (r *MetricInMemRepo[T]) Set(name string, value T, tp string) {
-	if metric, ok := r.storage[name]; ok {
-		metric.Value = value
+func (r *MetricInMemRepo[T]) Set(_ context.Context, m *model.Metrics[T]) error {
+	if metric, ok := r.storage[m.ID]; ok {
+		metric.Value = m.Value
 	} else {
-		r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: value}
+		r.storage[m.ID] = m
 	}
+	return nil
 }
 
 // Update updates the value of a metric by adding the delta to the current value.
-func (r *MetricInMemRepo[T]) Update(name string, delta T, tp string) {
-	if metric, exists := r.storage[name]; exists {
-		metric.Value += delta
+func (r *MetricInMemRepo[T]) Update(_ context.Context, m *model.Metrics[T]) error {
+	if metric, exists := r.storage[m.ID]; exists {
+		metric.Value += m.Value
 	} else {
-		r.storage[name] = &model.Metrics[T]{ID: name, Type: tp, Value: delta}
+		r.storage[m.ID] = m
 	}
+	return nil
+}
+
+// UpdateBatch updates a batch of metrics by adding their deltas to the current values.
+func (r *MetricInMemRepo[T]) UpdateBatch(_ context.Context, ms []*model.Metrics[T]) error {
+	for _, m := range ms {
+		if metric, exists := r.storage[m.ID]; exists {
+			metric.Value += m.Value
+		} else {
+			r.storage[m.ID] = m
+		}
+	}
+	return nil
+}
+
+// SetBatch sets a batch of metrics to the given values.
+func (r *MetricInMemRepo[T]) SetBatch(_ context.Context, ms []*model.Metrics[T]) error {
+	for _, m := range ms {
+		if metric, ok := r.storage[m.ID]; ok {
+			metric.Value = m.Value
+		} else {
+			r.storage[m.ID] = m
+		}
+	}
+	return nil
 }
 
 // List returns a list of all metrics in the repository.
-func (r *MetricInMemRepo[T]) List() []model.Metrics[T] {
+func (r *MetricInMemRepo[T]) List(_ context.Context) ([]model.Metrics[T], error) {
 	metrics := make([]model.Metrics[T], 0, len(r.storage))
 	for _, metric := range r.storage {
 		metrics = append(metrics, *metric)
 	}
-	return metrics
+	return metrics, nil
 }
