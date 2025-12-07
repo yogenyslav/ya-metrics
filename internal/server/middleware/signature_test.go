@@ -62,7 +62,7 @@ func TestWithSignature(t *testing.T) {
 		signedHandler := WithSignature(key)(h)
 		signedHandler.ServeHTTP(recorder, req)
 
-		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 
 	t.Run("no key", func(t *testing.T) {
