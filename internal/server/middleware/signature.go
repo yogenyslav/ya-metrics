@@ -24,8 +24,8 @@ func WithSignature(key string) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			incomingSignature, ok := r.Header[http.CanonicalHeaderKey(headerSignature)]
-			if key == "" || !ok {
+			incomingSignature := r.Header.Get(headerSignature)
+			if key == "" || incomingSignature == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -38,11 +38,12 @@ func WithSignature(key string) Middleware {
 			}
 
 			expectSignature := sg.SignatureSHA256(body.Bytes())
-			if incomingSignature[0] != expectSignature {
+			if incomingSignature != expectSignature {
 				http.Error(w, "invalid signature", http.StatusBadRequest)
 				return
 			}
 
+			r.Body = io.NopCloser(&body)
 			next.ServeHTTP(w, r)
 
 			w.Header().Set(headerSignature, expectSignature)
