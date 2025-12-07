@@ -15,16 +15,23 @@ type Client interface {
 	Do(r *http.Request) (*http.Response, error)
 }
 
+// SignatureGenerator is an interface for generating hash signatures.
+type SignatureGenerator interface {
+	SignatureSHA256(data []byte) string
+}
+
 // Agent struct to collect and send metrics to server.
 type Agent struct {
 	client Client
 	cfg    *config.Config
+	sg     SignatureGenerator
 }
 
 // New creates a new Agent instance.
-func New(client Client, cfg *config.Config) *Agent {
+func New(client Client, cfg *config.Config, sg SignatureGenerator) *Agent {
 	return &Agent{
 		client: client,
 		cfg:    cfg,
+		sg:     sg,
 	}
 }

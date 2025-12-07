@@ -23,6 +23,7 @@ type Config struct {
 	ReportIntervalSec int
 	CompressionType   string
 	Retry             *retry.Config
+	SecureKey         string
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -32,6 +33,7 @@ func NewConfig() (*Config, error) {
 	pollIntervalFlag := flags.Int("p", defaultPollInterval, "интервал опроса метрик, сек.")
 	reportIntervalFlag := flags.Int("r", defaultReportInterval, "интервал отправки метрик на сервер, сек. ")
 	compressionTypeFlag := flags.String("c", "", "тип сжатия при отправке метрик на сервер")
+	secureKeyFlag := flags.String("k", "", "ключ для подписи сигнатуры сообщений")
 
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
@@ -52,5 +54,6 @@ func NewConfig() (*Config, error) {
 			MaxRetries:         retry.DefaultRetries,
 			LinearBackoffMilli: retry.DefaultLinearBackoffMilli,
 		},
+		SecureKey: pkg.GetEnv("KEY", *secureKeyFlag),
 	}, nil
 }
