@@ -114,7 +114,7 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, reqBuff *bytes.Buffer) err
 	}
 
 	if a.cfg.SecureKey != "" {
-		req.Header.Set("HashSHA256", a.sg.SignatureSHA256(reqBuff.Bytes()))
+		req.Header.Set("Hash", a.sg.SignatureSHA256(reqBuff.Bytes()))
 	}
 
 	var buff bytes.Buffer

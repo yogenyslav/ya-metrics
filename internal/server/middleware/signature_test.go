@@ -27,7 +27,7 @@ func TestWithSignature(t *testing.T) {
 		sg := secure.NewSignatureGenerator(key)
 		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
 		signature := sg.SignatureSHA256(body)
-		req.Header.Set(headerSHA256Signature, signature)
+		req.Header.Set(headerSignature, signature)
 
 		recorder := httptest.NewRecorder()
 		signedHandler := WithSignature(key)(h)
@@ -43,7 +43,7 @@ func TestWithSignature(t *testing.T) {
 		body := []byte("test")
 
 		req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewReader(body))
-		req.Header.Set(headerSHA256Signature, "invalid_signature")
+		req.Header.Set(headerSignature, "invalid_signature")
 
 		recorder := httptest.NewRecorder()
 		signedHandler := WithSignature(key)(h)

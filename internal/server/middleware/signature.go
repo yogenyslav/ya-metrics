@@ -8,7 +8,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/pkg/secure"
 )
 
-const headerSHA256Signature = "HashSHA256"
+const headerSignature = "Hash"
 
 // SignatureGenerator is an interface for generating hash signatures.
 type SignatureGenerator interface {
@@ -24,12 +24,11 @@ func WithSignature(key string) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if key == "" {
+			incomingSignature, ok := r.Header[headerSignature]
+			if key == "" || !ok {
 				next.ServeHTTP(w, r)
 				return
 			}
-
-			incomingSignature := r.Header.Get(headerSHA256Signature)
 
 			body := bytes.Buffer{}
 			_, err := io.Copy(&body, r.Body)
@@ -39,14 +38,14 @@ func WithSignature(key string) Middleware {
 			}
 
 			expectSignature := sg.SignatureSHA256(body.Bytes())
-			if incomingSignature != expectSignature {
+			if incomingSignature[0] != expectSignature {
 				http.Error(w, "invalid signature", http.StatusBadRequest)
 				return
 			}
 
 			next.ServeHTTP(w, r)
 
-			w.Header().Set(headerSHA256Signature, expectSignature)
+			w.Header().Set(headerSignature, expectSignature)
 		})
 	}
 }
