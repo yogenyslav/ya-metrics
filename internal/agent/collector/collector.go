@@ -144,7 +144,7 @@ func (c *Collector) GetAllGaugeMetrics() []*model.Metrics[float64] {
 		c.utilizationMetrics.TotalMemory,
 		c.utilizationMetrics.FreeMemory,
 	}
-	m = append(m, c.utilizationMetrics.CpuUtilization...)
+	m = append(m, c.utilizationMetrics.CPUUtilization...)
 	return m
 }
 

@@ -15,7 +15,7 @@ import (
 type UtilizationMetrics struct {
 	TotalMemory    *model.Metrics[float64]
 	FreeMemory     *model.Metrics[float64]
-	CpuUtilization []*model.Metrics[float64]
+	CPUUtilization []*model.Metrics[float64]
 }
 
 // NewUtilizationMetrics initializes and returns a new UtilizationMetrics instance.
@@ -23,10 +23,10 @@ func NewUtilizationMetrics() *UtilizationMetrics {
 	return &UtilizationMetrics{
 		TotalMemory: model.NewGaugeMetric("TotalMemory"),
 		FreeMemory:  model.NewGaugeMetric("FreeMemory"),
-		CpuUtilization: func() []*model.Metrics[float64] {
+		CPUUtilization: func() []*model.Metrics[float64] {
 			metrics := make([]*model.Metrics[float64], 0, runtime.NumCPU())
 			for i := 0; i < runtime.NumCPU(); i++ {
-				metrics = append(metrics, model.NewGaugeMetric("CPUUtilization"+strconv.Itoa(i)))
+				metrics = append(metrics, model.NewGaugeMetric("CPUutilization"+strconv.Itoa(i)))
 			}
 			return metrics
 		}(),
@@ -47,10 +47,10 @@ func (c *Collector) updateUtilizationMetrics() error {
 		return errs.Wrap(err, "update cpu utilization")
 	}
 	for i, cpuPercent := range cpuUsage {
-		if i >= len(c.utilizationMetrics.CpuUtilization) {
+		if i >= len(c.utilizationMetrics.CPUUtilization) {
 			break
 		}
-		c.utilizationMetrics.CpuUtilization[i].Value = cpuPercent
+		c.utilizationMetrics.CPUUtilization[i].Value = cpuPercent
 	}
 
 	return nil
