@@ -70,7 +70,7 @@ func NewMemoryMetrics() *MemoryMetrics {
 	}
 }
 
-func (c *Collector) updateMemoryMetrics() {
+func (c *Collector) updateMemoryMetrics() error {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
@@ -101,4 +101,6 @@ func (c *Collector) updateMemoryMetrics() {
 	c.memoryMetrics.StackSys.Value = float64(memStats.StackSys)
 	c.memoryMetrics.Sys.Value = float64(memStats.Sys)
 	c.memoryMetrics.TotalAlloc.Value = float64(memStats.TotalAlloc)
+
+	return nil
 }

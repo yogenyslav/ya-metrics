@@ -3,16 +3,19 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/agent/config"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 )
 
-func Test_encodeMetrics(t *testing.T) {
+func TestAgent_encodeMetrics(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -103,13 +106,15 @@ func Test_encodeMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			metrics, err := encodeMetrics(tt.metrics, tt.cfg.CompressionType)
+			a := New(http.DefaultClient, tt.cfg, nil, zerolog.Ctx(context.Background()))
+
+			metrics, err := a.encodeMetrics(tt.metrics, tt.cfg.CompressionType)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, metrics)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.wantMetrics, metrics.Bytes())
+				assert.Equal(t, tt.wantMetrics, metrics)
 			}
 		})
 	}

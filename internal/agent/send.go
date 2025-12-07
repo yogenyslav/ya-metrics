@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -26,13 +27,12 @@ func (a *Agent) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	coll := collector.NewCollector(a.cfg.PollIntervalSec)
+	coll := collector.NewCollector(a.cfg.PollIntervalSec, a.l)
+	coll.Collect(ctx)
 
 	go func() {
 		ticker := time.NewTicker(time.Second * time.Duration(a.cfg.ReportIntervalSec))
 		defer ticker.Stop()
-
-		coll.Collect(ctx)
 
 		for {
 			select {
@@ -54,7 +54,8 @@ func (a *Agent) Start() error {
 	return nil
 }
 
-func encodeMetrics(metrics []*model.MetricsDto, compressionType string) (*bytes.Buffer, error) {
+func (a *Agent) encodeMetrics(metrics []*model.MetricsDto, compressionType string) ([]byte, error) {
+	a.l.Debug().Any("metrics", metrics).Msg("sending batch")
 	body, err := json.Marshal(metrics)
 	if err != nil {
 		return nil, errs.Wrap(err, "marshal metric")
@@ -70,7 +71,7 @@ func encodeMetrics(metrics []*model.MetricsDto, compressionType string) (*bytes.
 		buf.Write(body)
 	}
 
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
@@ -87,24 +88,36 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 		metrics = append(metrics, metric.ToDto())
 	}
 
-	buf, err := encodeMetrics(metrics, a.cfg.CompressionType)
-	if err != nil {
-		return errs.Wrap(err, "encode metrics")
+	errCh := make(chan error, a.cfg.RateLimit)
+	defer close(errCh)
+
+	batchSize := (len(metrics) + a.cfg.RateLimit - 1) / a.cfg.RateLimit
+	for batch := range slices.Chunk(metrics, batchSize) {
+		go a.sendMetricsBatch(ctx, batch, errCh)
 	}
 
-	if err = a.sendMetricsBatch(ctx, buf); err != nil {
-		return errs.Wrap(err, "send metrics batch")
+	for range a.cfg.RateLimit {
+		if err := <-errCh; err != nil {
+			return errs.Wrap(err, "send all metrics")
+		}
 	}
 
 	return nil
 }
 
-func (a *Agent) sendMetricsBatch(ctx context.Context, reqBuff *bytes.Buffer) error {
+func (a *Agent) sendMetricsBatch(ctx context.Context, batch []*model.MetricsDto, errCh chan<- error) {
+	data, err := a.encodeMetrics(batch, a.cfg.CompressionType)
+	if err != nil {
+		errCh <- errs.Wrap(err, "encode metrics")
+		return
+	}
+
 	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost, a.cfg.ServerAddr+"/updates/", reqBuff,
+		ctx, http.MethodPost, a.cfg.ServerAddr+"/updates/", bytes.NewReader(data),
 	)
 	if err != nil {
-		return errs.Wrap(err, "create request")
+		errCh <- errs.Wrap(err, "create request")
+		return
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -114,7 +127,7 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, reqBuff *bytes.Buffer) err
 	}
 
 	if a.cfg.SecureKey != "" {
-		req.Header.Set("HashSHA256", a.sg.SignatureSHA256(reqBuff.Bytes()))
+		req.Header.Set("HashSHA256", a.sg.SignatureSHA256(data))
 	}
 
 	var buff bytes.Buffer
@@ -140,10 +153,13 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, reqBuff *bytes.Buffer) err
 	})
 	if err != nil {
 		if errors.Is(err, retry.ErrUnretriable) {
-			return errs.Wrap(ErrUpdateMetric)
+			errCh <- errs.Wrap(ErrUpdateMetric)
+			return
 		}
-		return errs.Wrap(err, "send request")
+		errCh <- errs.Wrap(err, "send request")
+		return
 	}
 
-	return nil
+	a.l.Info().Msg("sent metrics batch successfully")
+	errCh <- nil
 }

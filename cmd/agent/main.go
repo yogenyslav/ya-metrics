@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/yogenyslav/ya-metrics/internal/agent"
@@ -29,7 +30,9 @@ func run() error {
 		sg = secure.NewSignatureGenerator(cfg.SecureKey)
 	}
 
-	a := agent.New(http.DefaultClient, cfg, sg)
+	l := zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+	a := agent.New(http.DefaultClient, cfg, sg, &l)
 
 	err = a.Start()
 	if err != nil {
