@@ -54,6 +54,25 @@ func (a *Agent) Start() error {
 	return nil
 }
 
+func encodeMetrics(metrics []*model.MetricsDto, compressionType string) (*bytes.Buffer, error) {
+	body, err := json.Marshal(metrics)
+	if err != nil {
+		return nil, errs.Wrap(err, "marshal metric")
+	}
+
+	buf := &bytes.Buffer{}
+	switch compressionType {
+	case "gzip":
+		gz := gzip.NewWriter(buf)
+		gz.Write(body)
+		gz.Close()
+	default:
+		buf.Write(body)
+	}
+
+	return buf, nil
+}
+
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
 	gaugeMetrics := coll.GetAllGaugeMetrics()
 	counterMetrics := coll.GetAllCounterMetrics()
@@ -68,7 +87,7 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 		metrics = append(metrics, metric.ToDto())
 	}
 
-	buf, err := a.encodeMetrics(metrics)
+	buf, err := encodeMetrics(metrics, a.cfg.CompressionType)
 	if err != nil {
 		return errs.Wrap(err, "encode metrics")
 	}
@@ -80,28 +99,9 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 	return nil
 }
 
-func (a *Agent) encodeMetrics(metrics []*model.MetricsDto) (*bytes.Buffer, error) {
-	body, err := json.Marshal(metrics)
-	if err != nil {
-		return nil, errs.Wrap(err, "marshal metric")
-	}
-
-	buf := &bytes.Buffer{}
-	switch a.cfg.CompressionType {
-	case "gzip":
-		gz := gzip.NewWriter(buf)
-		gz.Write(body)
-		gz.Close()
-	default:
-		buf.Write(body)
-	}
-
-	return buf, nil
-}
-
-func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
+func (a *Agent) sendMetricsBatch(ctx context.Context, reqBuff *bytes.Buffer) error {
 	req, err := http.NewRequestWithContext(
-		ctx, http.MethodPost, a.cfg.ServerAddr+"/updates/", buf,
+		ctx, http.MethodPost, a.cfg.ServerAddr+"/updates/", reqBuff,
 	)
 	if err != nil {
 		return errs.Wrap(err, "create request")
@@ -111,6 +111,10 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, buf *bytes.Buffer) error {
 	if a.cfg.CompressionType != "" {
 		req.Header.Set("Accept-Encoding", a.cfg.CompressionType)
 		req.Header.Set("Content-Encoding", a.cfg.CompressionType)
+	}
+
+	if a.cfg.SecureKey != "" {
+		req.Header.Set("HashSHA256", a.sg.SignatureSHA256(reqBuff.Bytes()))
 	}
 
 	var buff bytes.Buffer

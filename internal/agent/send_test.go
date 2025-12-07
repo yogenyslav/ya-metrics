@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/internal/model"
 )
 
-func TestAgent_encodeMetrics(t *testing.T) {
+func Test_encodeMetrics(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -104,8 +103,7 @@ func TestAgent_encodeMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			a := New(http.DefaultClient, tt.cfg)
-			metrics, err := a.encodeMetrics(tt.metrics)
+			metrics, err := encodeMetrics(tt.metrics, tt.cfg.CompressionType)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, metrics)

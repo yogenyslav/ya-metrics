@@ -39,8 +39,11 @@ func NewServer(
 	l *zerolog.Logger,
 ) (*Server, error) {
 	router := chi.NewRouter()
-	router.Use(middleware.WithLogging(l))
-	router.Use(middleware.WithCompression(middleware.GzipCompression))
+	router.Use(
+		middleware.WithLogging(l),
+		middleware.WithCompression(middleware.GzipCompression),
+		middleware.WithSignature(cfg.Server.SecureKey),
+	)
 
 	srv := &Server{
 		router: router,

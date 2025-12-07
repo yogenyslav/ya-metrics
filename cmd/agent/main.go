@@ -8,6 +8,7 @@ import (
 
 	"github.com/yogenyslav/ya-metrics/internal/agent"
 	"github.com/yogenyslav/ya-metrics/internal/agent/config"
+	"github.com/yogenyslav/ya-metrics/pkg/secure"
 )
 
 func main() {
@@ -23,7 +24,12 @@ func run() error {
 		return err
 	}
 
-	a := agent.New(http.DefaultClient, cfg)
+	var sg *secure.SignatureGenerator
+	if cfg.SecureKey != "" {
+		sg = secure.NewSignatureGenerator(cfg.SecureKey)
+	}
+
+	a := agent.New(http.DefaultClient, cfg, sg)
 
 	err = a.Start()
 	if err != nil {

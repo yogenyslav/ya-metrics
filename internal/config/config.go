@@ -21,8 +21,9 @@ type DatabaseConfig struct {
 
 // ServerConfig holds the configuration settings for the server.
 type ServerConfig struct {
-	Addr     string
-	LogLevel string
+	Addr      string
+	LogLevel  string
+	SecureKey string
 }
 
 // DumpConfig holds settings for repository dumping into file.
@@ -53,6 +54,7 @@ func NewConfig() (*Config, error) {
 	)
 	restoreFlag := flags.Bool("r", false, "восстановление метрик из файла при старте сервера")
 	dbDsnFlag := flags.String("d", "", "строка с адресом подключения к БД")
+	secureKeyFlag := flags.String("k", "", "ключ для подписи сигнатуры сообщений")
 
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
@@ -61,8 +63,9 @@ func NewConfig() (*Config, error) {
 
 	return &Config{
 		Server: &ServerConfig{
-			Addr:     pkg.GetEnv("ADDRESS", *addrFlag),
-			LogLevel: pkg.GetEnv("LOG_LEVEL", *logLevelFlag),
+			Addr:      pkg.GetEnv("ADDRESS", *addrFlag),
+			LogLevel:  pkg.GetEnv("LOG_LEVEL", *logLevelFlag),
+			SecureKey: pkg.GetEnv("KEY", *secureKeyFlag),
 		},
 		Dump: &DumpConfig{
 			FileStoragePath: pkg.GetEnv("FILE_STORAGE_PATH", *fileStoragePathFlag),
