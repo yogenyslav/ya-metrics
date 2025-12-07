@@ -24,7 +24,7 @@ func WithSignature(key string) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			incomingSignature, ok := r.Header[headerSignature]
+			incomingSignature, ok := r.Header[http.CanonicalHeaderKey(headerSignature)]
 			if key == "" || !ok {
 				next.ServeHTTP(w, r)
 				return
