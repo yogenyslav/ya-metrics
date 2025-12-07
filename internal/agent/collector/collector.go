@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/yogenyslav/ya-metrics/internal/model"
@@ -9,22 +10,22 @@ import (
 
 // Collector struct to collect metrics.
 type Collector struct {
-	MemoryMetrics *MemoryMetrics
-	PollCount     *model.Metrics[int64]
-	RandomValue   *model.Metrics[float64]
 	PollInterval  int
+	memoryMetrics *MemoryMetrics
+	pollCount     *model.Metrics[int64]
+	randomValue   *model.Metrics[float64]
+	mu            *sync.Mutex
 }
 
 // NewCollector creates a new Collector instance.
 func NewCollector(pollInterval int) *Collector {
-	c := &Collector{
-		MemoryMetrics: NewMemoryMetrics(),
-		PollCount:     model.NewCounterMetric("PollCount"),
-		RandomValue:   model.NewGaugeMetric("RandomValue"),
+	return &Collector{
+		memoryMetrics: NewMemoryMetrics(),
+		pollCount:     model.NewCounterMetric("PollCount"),
+		randomValue:   model.NewGaugeMetric("RandomValue"),
 		PollInterval:  pollInterval,
+		mu:            &sync.Mutex{},
 	}
-
-	return c
 }
 
 // Collect starts collecting metrics at specified intervals.
@@ -45,48 +46,78 @@ func (c *Collector) Collect(ctx context.Context) {
 }
 
 func (c *Collector) updateMetrics() {
-	c.PollCount.Value++
-	c.RandomValue.Value = float64(time.Now().UnixNano()%100) + 1
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.pollCount.Value++
+	c.randomValue.Value = float64(time.Now().UnixNano()%100) + 1
 	c.updateMemoryMetrics()
+}
+
+// MemoryMetrics returns the current memory metrics.
+func (c *Collector) MemoryMetrics() *MemoryMetrics {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.memoryMetrics
+}
+
+// PollCount returns the current poll count metric.
+func (c *Collector) PollCount() *model.Metrics[int64] {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.pollCount
+}
+
+// RandomValue returns the current random value metric.
+func (c *Collector) RandomValue() *model.Metrics[float64] {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.randomValue
 }
 
 // GetAllGaugeMetrics returns all gauge metrics collected by the Collector.
 func (c *Collector) GetAllGaugeMetrics() []*model.Metrics[float64] {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return []*model.Metrics[float64]{
-		c.RandomValue,
-		c.MemoryMetrics.Alloc,
-		c.MemoryMetrics.BuckHashSys,
-		c.MemoryMetrics.Frees,
-		c.MemoryMetrics.GCCPUFraction,
-		c.MemoryMetrics.GCSys,
-		c.MemoryMetrics.HeapAlloc,
-		c.MemoryMetrics.HeapIdle,
-		c.MemoryMetrics.HeapInuse,
-		c.MemoryMetrics.HeapObjects,
-		c.MemoryMetrics.HeapReleased,
-		c.MemoryMetrics.HeapSys,
-		c.MemoryMetrics.LastGC,
-		c.MemoryMetrics.Lookups,
-		c.MemoryMetrics.MCacheInuse,
-		c.MemoryMetrics.MCacheSys,
-		c.MemoryMetrics.MSpanInuse,
-		c.MemoryMetrics.MSpanSys,
-		c.MemoryMetrics.Mallocs,
-		c.MemoryMetrics.NextGC,
-		c.MemoryMetrics.NumForcedGC,
-		c.MemoryMetrics.NumGC,
-		c.MemoryMetrics.OtherSys,
-		c.MemoryMetrics.PauseTotalNs,
-		c.MemoryMetrics.StackInuse,
-		c.MemoryMetrics.StackSys,
-		c.MemoryMetrics.Sys,
-		c.MemoryMetrics.TotalAlloc,
+		c.randomValue,
+		c.memoryMetrics.Alloc,
+		c.memoryMetrics.BuckHashSys,
+		c.memoryMetrics.Frees,
+		c.memoryMetrics.GCCPUFraction,
+		c.memoryMetrics.GCSys,
+		c.memoryMetrics.HeapAlloc,
+		c.memoryMetrics.HeapIdle,
+		c.memoryMetrics.HeapInuse,
+		c.memoryMetrics.HeapObjects,
+		c.memoryMetrics.HeapReleased,
+		c.memoryMetrics.HeapSys,
+		c.memoryMetrics.LastGC,
+		c.memoryMetrics.Lookups,
+		c.memoryMetrics.MCacheInuse,
+		c.memoryMetrics.MCacheSys,
+		c.memoryMetrics.MSpanInuse,
+		c.memoryMetrics.MSpanSys,
+		c.memoryMetrics.Mallocs,
+		c.memoryMetrics.NextGC,
+		c.memoryMetrics.NumForcedGC,
+		c.memoryMetrics.NumGC,
+		c.memoryMetrics.OtherSys,
+		c.memoryMetrics.PauseTotalNs,
+		c.memoryMetrics.StackInuse,
+		c.memoryMetrics.StackSys,
+		c.memoryMetrics.Sys,
+		c.memoryMetrics.TotalAlloc,
 	}
 }
 
 // GetAllCounterMetrics returns all counter metrics collected by the Collector.
 func (c *Collector) GetAllCounterMetrics() []*model.Metrics[int64] {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return []*model.Metrics[int64]{
-		c.PollCount,
+		c.pollCount,
 	}
 }

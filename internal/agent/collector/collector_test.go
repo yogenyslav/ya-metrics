@@ -17,17 +17,18 @@ func TestCollector_Collect(t *testing.T) {
 
 			pollInterval := 1
 			c := NewCollector(pollInterval)
+
+			initialPollCount := c.PollCount().Value
+			initialAlloc := c.MemoryMetrics().Alloc.Value
+
 			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			c.Collect(ctx)
-			initialPollCount := c.PollCount.Value
-			initialAlloc := c.MemoryMetrics.Alloc.Value
 
-			<-time.After(time.Second*time.Duration(pollInterval) + 500*time.Millisecond)
+			<-time.After(time.Second * time.Duration(pollInterval+1))
+			cancel()
 
-			assert.Greater(t, c.PollCount.Value, initialPollCount)
-			assert.Greater(t, c.MemoryMetrics.Alloc.Value, initialAlloc)
+			assert.Greater(t, c.PollCount().Value, initialPollCount)
+			assert.Greater(t, c.MemoryMetrics().Alloc.Value, initialAlloc)
 		},
 	)
 
@@ -37,9 +38,9 @@ func TestCollector_Collect(t *testing.T) {
 
 			pollInterval := 1
 			c := NewCollector(pollInterval)
-			initialPollCount := c.PollCount.Value
-			initialRandomValue := c.RandomValue.Value
-			initialAlloc := c.MemoryMetrics.Alloc.Value
+			initialPollCount := c.PollCount().Value
+			initialRandomValue := c.RandomValue().Value
+			initialAlloc := c.MemoryMetrics().Alloc.Value
 
 			ctx, cancel := context.WithCancel(context.Background())
 			c.Collect(ctx)
@@ -47,9 +48,9 @@ func TestCollector_Collect(t *testing.T) {
 			<-time.After(time.Second * time.Duration(pollInterval/2))
 			cancel()
 
-			assert.Equal(t, initialPollCount, c.PollCount.Value)
-			assert.Equal(t, initialRandomValue, c.RandomValue.Value)
-			assert.Equal(t, initialAlloc, c.MemoryMetrics.Alloc.Value)
+			assert.Equal(t, initialPollCount, c.PollCount().Value)
+			assert.Equal(t, initialRandomValue, c.RandomValue().Value)
+			assert.Equal(t, initialAlloc, c.MemoryMetrics().Alloc.Value)
 		},
 	)
 }
