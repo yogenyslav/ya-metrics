@@ -26,7 +26,7 @@ func NewUtilizationMetrics() *UtilizationMetrics {
 		CpuUtilization: func() []*model.Metrics[float64] {
 			metrics := make([]*model.Metrics[float64], 0, runtime.NumCPU())
 			for i := 0; i < runtime.NumCPU(); i++ {
-				metrics = append(metrics, model.NewGaugeMetric("CPUutilization"+strconv.Itoa(i)))
+				metrics = append(metrics, model.NewGaugeMetric("CPUUtilization"+strconv.Itoa(i)))
 			}
 			return metrics
 		}(),
