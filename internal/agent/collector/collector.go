@@ -64,7 +64,6 @@ func (c *Collector) updateMetrics() {
 	defer c.mu.Unlock()
 
 	errCh := make(chan error, len(c.updaters))
-	defer close(errCh)
 
 	c.wg.Add(len(c.updaters))
 	for _, updater := range c.updaters {
@@ -77,6 +76,7 @@ func (c *Collector) updateMetrics() {
 			}
 		}(updater)
 	}
+	c.wg.Wait()
 
 	success := true
 	for range c.updaters {
@@ -89,8 +89,6 @@ func (c *Collector) updateMetrics() {
 	if success {
 		c.l.Info().Msg("updated all metrics")
 	}
-
-	c.wg.Wait()
 }
 
 // MemoryMetrics returns the current memory metrics.
@@ -109,9 +107,6 @@ func (c *Collector) GeneralMetrics() *GeneralMetrics {
 
 // GetAllGaugeMetrics returns all gauge metrics collected by the Collector.
 func (c *Collector) GetAllGaugeMetrics() []*model.Metrics[float64] {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	m := []*model.Metrics[float64]{
 		c.generalMetrics.RandomValue,
 		c.memoryMetrics.Alloc,
@@ -150,10 +145,28 @@ func (c *Collector) GetAllGaugeMetrics() []*model.Metrics[float64] {
 
 // GetAllCounterMetrics returns all counter metrics collected by the Collector.
 func (c *Collector) GetAllCounterMetrics() []*model.Metrics[int64] {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	return []*model.Metrics[int64]{
 		c.generalMetrics.PollCount,
 	}
+}
+
+// GetAllMetrics returns all metrics collected by the Collector.
+func (c *Collector) GetAllMetrics() []*model.MetricsDto {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	gaugeMetrics := c.GetAllGaugeMetrics()
+	counterMetrics := c.GetAllCounterMetrics()
+
+	metrics := make([]*model.MetricsDto, 0, len(gaugeMetrics)+len(counterMetrics))
+
+	for _, metric := range gaugeMetrics {
+		metrics = append(metrics, metric.ToDto())
+	}
+
+	for _, metric := range counterMetrics {
+		metrics = append(metrics, metric.ToDto())
+	}
+
+	return metrics
 }

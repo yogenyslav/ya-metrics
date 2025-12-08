@@ -40,7 +40,7 @@ run-server:
 .PHONY: test
 test:
 	@echo "running tests"
-	@go test ./... -coverprofile=coverage.out
+	@go test ./... -coverprofile=coverage.out --race
 	@go tool cover -func=coverage.out | grep total
 	@rm -f coverage.out
 

@@ -14,6 +14,7 @@ const (
 	defaultServerAddr     = "localhost:8080"
 	defaultPollInterval   = 2
 	defaultReportInterval = 10
+	defaultBatchSize      = 3
 )
 
 // Config holds the configuration settings for the agent.
@@ -25,6 +26,7 @@ type Config struct {
 	Retry             *retry.Config
 	SecureKey         string
 	RateLimit         int
+	BatchSize         int
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -58,5 +60,6 @@ func NewConfig() (*Config, error) {
 		},
 		SecureKey: pkg.GetEnv("KEY", *secureKeyFlag),
 		RateLimit: pkg.GetEnv("RATE_LIMIT", *rateLimitFlag),
+		BatchSize: defaultBatchSize,
 	}, nil
 }

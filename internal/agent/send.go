@@ -55,7 +55,6 @@ func (a *Agent) Start() error {
 }
 
 func (a *Agent) encodeMetrics(metrics []*model.MetricsDto, compressionType string) ([]byte, error) {
-	a.l.Debug().Any("metrics", metrics).Msg("sending batch")
 	body, err := json.Marshal(metrics)
 	if err != nil {
 		return nil, errs.Wrap(err, "marshal metric")
@@ -75,49 +74,98 @@ func (a *Agent) encodeMetrics(metrics []*model.MetricsDto, compressionType strin
 }
 
 func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) error {
-	gaugeMetrics := coll.GetAllGaugeMetrics()
-	counterMetrics := coll.GetAllCounterMetrics()
+	metrics := coll.GetAllMetrics()
 
-	metrics := make([]*model.MetricsDto, 0, len(gaugeMetrics)+len(counterMetrics))
+	// не уверен, что я понял идею применения worker pool именно тут корректно, так как изначально у нас отправлялся один большой запрос с метриками.
+	// может быть, если бы они обрабатывались ощутимое время на стороне сервера, тогда я бы лучше ощутил эту идею.
+	// в любом случае, пояснение к реализации:
+	// если считать batchSize через RateLimit, то будем получать batchCount <= RateLimit, что приведет к простою воркеров.
+	// для примера выбран batchSize = 3, чтобы воркеры в количестве RateLimit были зафиксированы и могли ждать получения новых батчей при batchCount > RateLimit.
+	// вопрос с оптимальным подбором размера батча, как мне кажется, на реальной задаче можно было бы определить только эмпирически.
 
-	for _, metric := range gaugeMetrics {
-		metrics = append(metrics, metric.ToDto())
-	}
+	batchCount := (len(metrics) + a.cfg.BatchSize - 1) / a.cfg.BatchSize
 
-	for _, metric := range counterMetrics {
-		metrics = append(metrics, metric.ToDto())
-	}
+	a.l.Info().Int("batchSize", a.cfg.BatchSize).Int("batchCount", batchCount).Msg("sending metrics")
 
-	errCh := make(chan error, a.cfg.RateLimit)
-	defer close(errCh)
-
-	batchSize := (len(metrics) + a.cfg.RateLimit - 1) / a.cfg.RateLimit
-	for batch := range slices.Chunk(metrics, batchSize) {
-		go a.sendMetricsBatch(ctx, batch, errCh)
-	}
-
+	errCh := make(chan error, batchCount)
+	batchCh := make(chan []*model.MetricsDto, batchCount)
 	for range a.cfg.RateLimit {
+		go a.sendMetricsBatch(ctx, batchCh, errCh)
+	}
+
+	for batch := range slices.Chunk(metrics, a.cfg.BatchSize) {
+		batchCh <- batch
+	}
+	close(batchCh)
+
+	success := true
+	for range batchCount {
 		if err := <-errCh; err != nil {
-			return errs.Wrap(err, "send all metrics")
+			success = false
 		}
+	}
+
+	if !success {
+		return errs.Wrap(errors.New("send all metrics"))
 	}
 
 	return nil
 }
 
-func (a *Agent) sendMetricsBatch(ctx context.Context, batch []*model.MetricsDto, errCh chan<- error) {
+func (a *Agent) sendMetricsBatch(ctx context.Context, batchCh <-chan []*model.MetricsDto, errCh chan<- error) {
+	for batch := range batchCh {
+		req, err := a.createRequest(ctx, batch)
+		if err != nil {
+			errCh <- errs.Wrap(err, "create request")
+			continue
+		}
+
+		var buff bytes.Buffer
+		err = retry.WithLinearBackoffRetry(ctx, a.cfg.Retry, func(context.Context) error {
+			resp, err := a.client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode >= http.StatusInternalServerError {
+				return fmt.Errorf("got status code: %d", resp.StatusCode)
+			} else if resp.StatusCode >= http.StatusBadRequest {
+				return errs.Wrap(retry.ErrUnretriable, fmt.Sprintf("got status code: %d", resp.StatusCode))
+			}
+
+			_, err = io.Copy(&buff, resp.Body)
+			if err != nil {
+				return errs.Wrap(retry.ErrUnretriable, err.Error())
+			}
+
+			return nil
+		})
+		if err != nil {
+			if errors.Is(err, retry.ErrUnretriable) {
+				errCh <- errs.Wrap(ErrUpdateMetric)
+				continue
+			}
+			errCh <- errs.Wrap(err, "send request")
+			continue
+		}
+
+		a.l.Info().Msg("sent metrics batch successfully")
+		errCh <- nil
+	}
+}
+
+func (a *Agent) createRequest(ctx context.Context, batch []*model.MetricsDto) (*http.Request, error) {
 	data, err := a.encodeMetrics(batch, a.cfg.CompressionType)
 	if err != nil {
-		errCh <- errs.Wrap(err, "encode metrics")
-		return
+		return nil, errs.Wrap(err, "encode metrics")
 	}
 
 	req, err := http.NewRequestWithContext(
 		ctx, http.MethodPost, a.cfg.ServerAddr+"/updates/", bytes.NewReader(data),
 	)
 	if err != nil {
-		errCh <- errs.Wrap(err, "create request")
-		return
+		return nil, errs.Wrap(err, "create request")
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -130,36 +178,5 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, batch []*model.MetricsDto,
 		req.Header.Set("HashSHA256", a.sg.SignatureSHA256(data))
 	}
 
-	var buff bytes.Buffer
-	err = retry.WithLinearBackoffRetry(ctx, a.cfg.Retry, func(context.Context) error {
-		resp, err := a.client.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode >= http.StatusInternalServerError {
-			return fmt.Errorf("got status code: %d", resp.StatusCode)
-		} else if resp.StatusCode >= http.StatusBadRequest {
-			return errs.Wrap(retry.ErrUnretriable, fmt.Sprintf("got status code: %d", resp.StatusCode))
-		}
-
-		_, err = io.Copy(&buff, resp.Body)
-		if err != nil {
-			return errs.Wrap(retry.ErrUnretriable, err.Error())
-		}
-
-		return nil
-	})
-	if err != nil {
-		if errors.Is(err, retry.ErrUnretriable) {
-			errCh <- errs.Wrap(ErrUpdateMetric)
-			return
-		}
-		errCh <- errs.Wrap(err, "send request")
-		return
-	}
-
-	a.l.Info().Msg("sent metrics batch successfully")
-	errCh <- nil
+	return req, nil
 }
