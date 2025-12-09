@@ -14,6 +14,7 @@ const (
 	defaultServerAddr     = "localhost:8080"
 	defaultPollInterval   = 2
 	defaultReportInterval = 10
+	defaultBatchSize      = 3
 )
 
 // Config holds the configuration settings for the agent.
@@ -24,6 +25,8 @@ type Config struct {
 	CompressionType   string
 	Retry             *retry.Config
 	SecureKey         string
+	RateLimit         int
+	BatchSize         int
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -34,6 +37,7 @@ func NewConfig() (*Config, error) {
 	reportIntervalFlag := flags.Int("r", defaultReportInterval, "интервал отправки метрик на сервер, сек. ")
 	compressionTypeFlag := flags.String("c", "", "тип сжатия при отправке метрик на сервер")
 	secureKeyFlag := flags.String("k", "", "ключ для подписи сигнатуры сообщений")
+	rateLimitFlag := flags.Int("l", 1, "максимальное число одновременных запросов к серверу")
 
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
@@ -55,5 +59,7 @@ func NewConfig() (*Config, error) {
 			LinearBackoffMilli: retry.DefaultLinearBackoffMilli,
 		},
 		SecureKey: pkg.GetEnv("KEY", *secureKeyFlag),
+		RateLimit: pkg.GetEnv("RATE_LIMIT", *rateLimitFlag),
+		BatchSize: defaultBatchSize,
 	}, nil
 }

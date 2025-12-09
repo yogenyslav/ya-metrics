@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,9 +17,9 @@ func TestCollector_Collect(t *testing.T) {
 			t.Parallel()
 
 			pollInterval := 1
-			c := NewCollector(pollInterval)
+			c := NewCollector(pollInterval, zerolog.Ctx(context.Background()))
 
-			initialPollCount := c.PollCount().Value
+			initialPollCount := c.GeneralMetrics().PollCount.Value
 			initialAlloc := c.MemoryMetrics().Alloc.Value
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -27,7 +28,7 @@ func TestCollector_Collect(t *testing.T) {
 			<-time.After(time.Second * time.Duration(pollInterval+1))
 			cancel()
 
-			assert.Greater(t, c.PollCount().Value, initialPollCount)
+			assert.Greater(t, c.GeneralMetrics().PollCount.Value, initialPollCount)
 			assert.Greater(t, c.MemoryMetrics().Alloc.Value, initialAlloc)
 		},
 	)
@@ -37,9 +38,9 @@ func TestCollector_Collect(t *testing.T) {
 			t.Parallel()
 
 			pollInterval := 1
-			c := NewCollector(pollInterval)
-			initialPollCount := c.PollCount().Value
-			initialRandomValue := c.RandomValue().Value
+			c := NewCollector(pollInterval, zerolog.DefaultContextLogger)
+			initialPollCount := c.GeneralMetrics().PollCount.Value
+			initialRandomValue := c.GeneralMetrics().RandomValue.Value
 			initialAlloc := c.MemoryMetrics().Alloc.Value
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -48,8 +49,8 @@ func TestCollector_Collect(t *testing.T) {
 			<-time.After(time.Second * time.Duration(pollInterval/2))
 			cancel()
 
-			assert.Equal(t, initialPollCount, c.PollCount().Value)
-			assert.Equal(t, initialRandomValue, c.RandomValue().Value)
+			assert.Equal(t, initialPollCount, c.GeneralMetrics().PollCount.Value)
+			assert.Equal(t, initialRandomValue, c.GeneralMetrics().RandomValue.Value)
 			assert.Equal(t, initialAlloc, c.MemoryMetrics().Alloc.Value)
 		},
 	)

@@ -5,27 +5,41 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 )
 
 // Collector struct to collect metrics.
 type Collector struct {
-	PollInterval  int
-	memoryMetrics *MemoryMetrics
-	pollCount     *model.Metrics[int64]
-	randomValue   *model.Metrics[float64]
-	mu            *sync.Mutex
+	PollInterval       int
+	memoryMetrics      *MemoryMetrics
+	generalMetrics     *GeneralMetrics
+	utilizationMetrics *UtilizationMetrics
+	l                  *zerolog.Logger
+	updaters           []func() error
+	mu                 *sync.Mutex
+	wg                 *sync.WaitGroup
 }
 
 // NewCollector creates a new Collector instance.
-func NewCollector(pollInterval int) *Collector {
-	return &Collector{
-		memoryMetrics: NewMemoryMetrics(),
-		pollCount:     model.NewCounterMetric("PollCount"),
-		randomValue:   model.NewGaugeMetric("RandomValue"),
-		PollInterval:  pollInterval,
-		mu:            &sync.Mutex{},
+func NewCollector(pollInterval int, l *zerolog.Logger) *Collector {
+	c := &Collector{
+		PollInterval:       pollInterval,
+		memoryMetrics:      NewMemoryMetrics(),
+		generalMetrics:     NewGeneralMetrics(),
+		utilizationMetrics: NewUtilizationMetrics(),
+		l:                  l,
+		mu:                 &sync.Mutex{},
+		wg:                 &sync.WaitGroup{},
 	}
+
+	c.updaters = []func() error{
+		c.updateMemoryMetrics,
+		c.updateGeneralMetrics,
+		c.updateUtilizationMetrics,
+	}
+
+	return c
 }
 
 // Collect starts collecting metrics at specified intervals.
@@ -49,9 +63,32 @@ func (c *Collector) updateMetrics() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.pollCount.Value++
-	c.randomValue.Value = float64(time.Now().UnixNano()%100) + 1
-	c.updateMemoryMetrics()
+	errCh := make(chan error, len(c.updaters))
+
+	c.wg.Add(len(c.updaters))
+	for _, updater := range c.updaters {
+		go func(u func() error) {
+			defer c.wg.Done()
+			err := u()
+			errCh <- err
+			if err == nil {
+				c.l.Info().Msg("updated metrics")
+			}
+		}(updater)
+	}
+	c.wg.Wait()
+
+	success := true
+	for range c.updaters {
+		if err := <-errCh; err != nil {
+			success = false
+			c.l.Error().Err(err).Msg("failed to update metrics")
+		}
+	}
+
+	if success {
+		c.l.Info().Msg("updated all metrics")
+	}
 }
 
 // MemoryMetrics returns the current memory metrics.
@@ -61,27 +98,17 @@ func (c *Collector) MemoryMetrics() *MemoryMetrics {
 	return c.memoryMetrics
 }
 
-// PollCount returns the current poll count metric.
-func (c *Collector) PollCount() *model.Metrics[int64] {
+// GeneralMetrics returns the current general metrics.
+func (c *Collector) GeneralMetrics() *GeneralMetrics {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.pollCount
-}
-
-// RandomValue returns the current random value metric.
-func (c *Collector) RandomValue() *model.Metrics[float64] {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.randomValue
+	return c.generalMetrics
 }
 
 // GetAllGaugeMetrics returns all gauge metrics collected by the Collector.
 func (c *Collector) GetAllGaugeMetrics() []*model.Metrics[float64] {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return []*model.Metrics[float64]{
-		c.randomValue,
+	m := []*model.Metrics[float64]{
+		c.generalMetrics.RandomValue,
 		c.memoryMetrics.Alloc,
 		c.memoryMetrics.BuckHashSys,
 		c.memoryMetrics.Frees,
@@ -109,15 +136,37 @@ func (c *Collector) GetAllGaugeMetrics() []*model.Metrics[float64] {
 		c.memoryMetrics.StackSys,
 		c.memoryMetrics.Sys,
 		c.memoryMetrics.TotalAlloc,
+		c.utilizationMetrics.TotalMemory,
+		c.utilizationMetrics.FreeMemory,
 	}
+	m = append(m, c.utilizationMetrics.CPUUtilization...)
+	return m
 }
 
 // GetAllCounterMetrics returns all counter metrics collected by the Collector.
 func (c *Collector) GetAllCounterMetrics() []*model.Metrics[int64] {
+	return []*model.Metrics[int64]{
+		c.generalMetrics.PollCount,
+	}
+}
+
+// GetAllMetrics returns all metrics collected by the Collector.
+func (c *Collector) GetAllMetrics() []*model.MetricsDto {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	return []*model.Metrics[int64]{
-		c.pollCount,
+	gaugeMetrics := c.GetAllGaugeMetrics()
+	counterMetrics := c.GetAllCounterMetrics()
+
+	metrics := make([]*model.MetricsDto, 0, len(gaugeMetrics)+len(counterMetrics))
+
+	for _, metric := range gaugeMetrics {
+		metrics = append(metrics, metric.ToDto())
 	}
+
+	for _, metric := range counterMetrics {
+		metrics = append(metrics, metric.ToDto())
+	}
+
+	return metrics
 }
