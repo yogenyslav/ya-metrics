@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 		name        string
 		ms          func() metricService
 		db          database.DB
+		audit       func() auditLogger
 		metricType  string
 		metrictName string
 		metricValue string
@@ -46,6 +48,13 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				m.EXPECT().
+					LogMetrics(gomock.Any(), []string{"metric1"}, gomock.Any()).
+					Return(nil)
+				return m
+			},
 			metricType:  model.Gauge,
 			metrictName: "metric1",
 			metricValue: "123.45",
@@ -67,14 +76,25 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				m.EXPECT().
+					LogMetrics(gomock.Any(), []string{"metric1"}, gomock.Any()).
+					Return(nil)
+				return m
+			},
 			metricType:  model.Counter,
 			metrictName: "metric1",
 			metricValue: "123",
 			wantCode:    http.StatusOK,
 		},
 		{
-			name:        "UpdateMetric with missing metric name",
-			ms:          func() metricService { return new(mocks.MockMetricService) },
+			name: "UpdateMetric with missing metric name",
+			ms:   func() metricService { return new(mocks.MockMetricService) },
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				return m
+			},
 			metricType:  model.Gauge,
 			metricValue: "123.45",
 			wantCode:    http.StatusNotFound,
@@ -94,6 +114,10 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				return m
+			},
 			metricType:  "invalid",
 			metrictName: "metric1",
 			metricValue: "123.45",
@@ -109,7 +133,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				t.Run(tt.name+" raw request", func(t *testing.T) {
 					t.Parallel()
 
-					h := NewHandler(tt.ms(), tt.db)
+					h := NewHandler(tt.ms(), tt.db, tt.audit())
 
 					writer := httptest.NewRecorder()
 					req := httptest.NewRequest(
@@ -129,7 +153,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				t.Run(tt.name+" json request", func(t *testing.T) {
 					t.Parallel()
 
-					h := NewHandler(tt.ms(), tt.db)
+					h := NewHandler(tt.ms(), tt.db, tt.audit())
 
 					data := model.MetricsDto{
 						Type: tt.metricType,
@@ -175,6 +199,7 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 	tests := []struct {
 		name     string
 		ms       func() metricService
+		audit    func() auditLogger
 		metrics  []model.MetricsDto
 		wantCode int
 	}{
@@ -194,6 +219,13 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 						Delta: pkg.Ptr(int64(100)),
 					},
 				}).Return(nil)
+				return m
+			},
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				m.EXPECT().
+					LogMetrics(gomock.Any(), []string{"metric1", "metric2"}, gomock.Any()).
+					Return(nil)
 				return m
 			},
 			metrics: []model.MetricsDto{
@@ -218,6 +250,10 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 					Return(errs.ErrInvalidMetricType)
 				return m
 			},
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				return m
+			},
 			metrics: []model.MetricsDto{
 				{
 					ID:    "metric1",
@@ -234,7 +270,7 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 			tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				h := NewHandler(tt.ms(), nil)
+				h := NewHandler(tt.ms(), nil, tt.audit())
 
 				body, err := json.Marshal(tt.metrics)
 				require.NoError(t, err)

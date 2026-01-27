@@ -52,7 +52,7 @@ func TestHandler_Ping(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewHandler(nil, tt.db())
+			h := NewHandler(nil, tt.db(), nil)
 			h.Ping(tt.w, tt.r)
 
 			resp := tt.w.(*httptest.ResponseRecorder)

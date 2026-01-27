@@ -21,6 +21,7 @@ func TestHandler_ListMetrics(t *testing.T) {
 		name        string
 		ms          metricService
 		db          database.DB
+		audit       auditLogger
 		writer      http.ResponseWriter
 		wantMetrics []*model.MetricsDto
 	}{
@@ -37,6 +38,10 @@ func TestHandler_ListMetrics(t *testing.T) {
 			}(),
 			db: func() *mocks.MockDB {
 				m := new(mocks.MockDB)
+				return m
+			}(),
+			audit: func() auditLogger {
+				m := new(mocks.MockauditLogger)
 				return m
 			}(),
 			writer: httptest.NewRecorder(),
@@ -57,6 +62,10 @@ func TestHandler_ListMetrics(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := new(mocks.MockauditLogger)
+				return m
+			}(),
 			writer:      httptest.NewRecorder(),
 			wantMetrics: []*model.MetricsDto{},
 		},
@@ -66,7 +75,7 @@ func TestHandler_ListMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewHandler(tt.ms, tt.db)
+			h := NewHandler(tt.ms, tt.db, tt.audit)
 			req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 
 			h.ListMetrics(tt.writer, req)
