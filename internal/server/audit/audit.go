@@ -67,7 +67,7 @@ func (ss *serviceSource) Log(ctx context.Context, data []byte) error {
 
 // Entry is the structure for audit log entries.
 type Entry struct {
-	Ts      int64    `json:"ts"`
+	TS      int64    `json:"ts"`
 	Metrics []string `json:"metrics"`
 	IPAddr  string   `json:"ip_address"`
 }
@@ -101,7 +101,7 @@ func New(cfg *config.AuditConfig) *Audit {
 // LogMetrics logs the given metrics as audit entry.
 func (a *Audit) LogMetrics(ctx context.Context, metrics []string, ipAddr string) error {
 	auditEntry := &Entry{
-		Ts:      time.Now().Unix(),
+		TS:      time.Now().Unix(),
 		Metrics: metrics,
 		IPAddr:  ipAddr,
 	}
