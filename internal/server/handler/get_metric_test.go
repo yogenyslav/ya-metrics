@@ -24,6 +24,7 @@ func TestHandler_GetMetric(t *testing.T) {
 		name       string
 		ms         func() metricService
 		db         database.DB
+		audit      func() auditLogger
 		metricType string
 		metricID   string
 		wantCode   int
@@ -40,6 +41,10 @@ func TestHandler_GetMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := new(mocks.MockauditLogger)
+				return m
+			},
 			metricType: model.Gauge,
 			metricID:   "metric1",
 			wantCode:   http.StatusOK,
@@ -56,6 +61,10 @@ func TestHandler_GetMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := new(mocks.MockauditLogger)
+				return m
+			},
 			metricType: model.Counter,
 			metricID:   "metric1",
 			wantCode:   http.StatusOK,
@@ -72,6 +81,10 @@ func TestHandler_GetMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := new(mocks.MockauditLogger)
+				return m
+			},
 			metricType: model.Gauge,
 			metricID:   "non_existing_metric",
 			wantCode:   http.StatusNotFound,
@@ -88,6 +101,10 @@ func TestHandler_GetMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := new(mocks.MockauditLogger)
+				return m
+			},
 			metricType: "invalid",
 			metricID:   "metric1",
 			wantCode:   http.StatusNotFound,
@@ -104,6 +121,10 @@ func TestHandler_GetMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := new(mocks.MockauditLogger)
+				return m
+			},
 			metricType: model.Gauge,
 			metricID:   "",
 			wantCode:   http.StatusNotFound,
@@ -117,7 +138,7 @@ func TestHandler_GetMetric(t *testing.T) {
 			t.Run(tt.name+" raw request", func(t *testing.T) {
 				t.Parallel()
 
-				h := NewHandler(tt.ms(), tt.db)
+				h := NewHandler(tt.ms(), tt.db, tt.audit())
 				writer := httptest.NewRecorder()
 
 				req := httptest.NewRequest(
@@ -139,7 +160,7 @@ func TestHandler_GetMetric(t *testing.T) {
 			t.Run(tt.name+"json request", func(t *testing.T) {
 				t.Parallel()
 
-				h := NewHandler(tt.ms(), tt.db)
+				h := NewHandler(tt.ms(), tt.db, tt.audit())
 				writer := httptest.NewRecorder()
 
 				data := model.MetricsDto{

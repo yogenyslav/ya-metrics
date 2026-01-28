@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/yogenyslav/ya-metrics/internal/config"
+	"github.com/yogenyslav/ya-metrics/internal/server/audit"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
 	"github.com/yogenyslav/ya-metrics/internal/server/middleware"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
@@ -94,8 +95,9 @@ func (s *Server) Start() error {
 	}
 
 	metricService := service.NewService(gaugeRepo, counterRepo)
+	audit := audit.New(s.cfg.Audit)
 
-	h := handler.NewHandler(metricService, s.pg)
+	h := handler.NewHandler(metricService, s.pg, audit)
 	h.RegisterRoutes(s.router)
 
 	go s.listen()
