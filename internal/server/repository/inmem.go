@@ -109,30 +109,6 @@ func (r *MetricInMemRepo[T]) Update(_ context.Context, m *model.Metrics[T]) erro
 	return nil
 }
 
-// UpdateBatch updates a batch of metrics by adding their deltas to the current values.
-func (r *MetricInMemRepo[T]) UpdateBatch(_ context.Context, ms []*model.Metrics[T]) error {
-	for _, m := range ms {
-		if metric, exists := r.storage[m.ID]; exists {
-			metric.Value += m.Value
-		} else {
-			r.storage[m.ID] = m
-		}
-	}
-	return nil
-}
-
-// SetBatch sets a batch of metrics to the given values.
-func (r *MetricInMemRepo[T]) SetBatch(_ context.Context, ms []*model.Metrics[T]) error {
-	for _, m := range ms {
-		if metric, ok := r.storage[m.ID]; ok {
-			metric.Value = m.Value
-		} else {
-			r.storage[m.ID] = m
-		}
-	}
-	return nil
-}
-
 // List returns a list of all metrics in the repository.
 func (r *MetricInMemRepo[T]) List(_ context.Context) ([]model.Metrics[T], error) {
 	metrics := make([]model.Metrics[T], 0, len(r.storage))

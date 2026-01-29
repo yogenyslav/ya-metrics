@@ -44,6 +44,11 @@ test:
 	@go tool cover -func=coverage.out | grep total
 	@rm -f coverage.out
 
+.PHONY: bench
+bench:
+	@echo "running benchmarks"
+	@go test github.com/yogenyslav/ya-metrics/internal/server/handler -bench=. -benchmem -run=^$ -count=3 -cpuprofile=cpu.out -memprofile=mem.out
+
 .PHONY: run-autotests
 
 ITER := `git rev-parse --abbrev-ref HEAD | grep -o '[0-9]\+'`

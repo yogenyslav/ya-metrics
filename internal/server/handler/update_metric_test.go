@@ -2,21 +2,24 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/server/repository"
+	"github.com/yogenyslav/ya-metrics/internal/server/service"
 	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/database"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestHandler_UpdateMetric(t *testing.T) {
@@ -288,4 +291,116 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 			},
 		)
 	}
+}
+
+func BenchmarkHandler_UpdateMetric(b *testing.B) {
+	mockAudit := mocks.NewMockauditLogger(gomock.NewController(b))
+	mockAudit.EXPECT().
+		LogMetrics(gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes()
+
+	b.Run("in memory repo", func(b *testing.B) {
+		gaugeRepo := repository.NewMetricInMemRepo(repository.StorageState[float64]{})
+		counterRepo := repository.NewMetricInMemRepo(repository.StorageState[int64]{})
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			var data []byte
+			if i%2 == 0 {
+				data = getGaugeData(b, float64(i))
+			} else {
+				data = getCounterData(b, int64(i))
+			}
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/update", data)
+			h.UpdateMetricJSON(writer, req)
+		}
+	})
+
+	b.Run("mock postgres repo", func(b *testing.B) {
+		mockDB := mocks.NewMockDB(gomock.NewController(b))
+		gaugeRepo := repository.NewMetricPostgresRepo[float64](mockDB)
+		counterRepo := repository.NewMetricPostgresRepo[int64](mockDB)
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		mockDB.EXPECT().
+			Exec(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(int64(1), nil).
+			AnyTimes()
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			var data []byte
+			if i%2 == 0 {
+				data = getGaugeData(b, float64(i))
+			} else {
+				data = getCounterData(b, int64(i))
+			}
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/update", data)
+			h.UpdateMetricJSON(writer, req)
+		}
+	})
+}
+
+func BenchmarkHandler_UpdateMetricsBatch(b *testing.B) {
+	mockAudit := mocks.NewMockauditLogger(gomock.NewController(b))
+	mockAudit.EXPECT().
+		LogMetrics(gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes()
+
+	b.Run("in memory repo", func(b *testing.B) {
+		gaugeRepo := repository.NewMetricInMemRepo(repository.StorageState[float64]{})
+		counterRepo := repository.NewMetricInMemRepo(repository.StorageState[int64]{})
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		uow.EXPECT().
+			WithTx(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+				return fn(ctx)
+			}).
+			AnyTimes()
+
+		data := getBatchData(b, float64(0), int64(0))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/updates", data)
+			h.UpdateMetricsBatch(writer, req)
+		}
+	})
+
+	b.Run("mock postgres repo", func(b *testing.B) {
+		mockDB := mocks.NewMockTxDB(gomock.NewController(b))
+		gaugeRepo := repository.NewMetricPostgresRepo[float64](mockDB)
+		counterRepo := repository.NewMetricPostgresRepo[int64](mockDB)
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		mockDB.EXPECT().
+			Exec(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(int64(1), nil).
+			AnyTimes()
+
+		uow.EXPECT().
+			WithTx(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+				return fn(ctx)
+			}).
+			AnyTimes()
+
+		data := getBatchData(b, float64(0), int64(0))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/updates", data)
+			h.UpdateMetricsBatch(writer, req)
+		}
+	})
 }

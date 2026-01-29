@@ -20,6 +20,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 	"github.com/yogenyslav/ya-metrics/pkg/retry"
+	"golang.org/x/sync/errgroup"
 )
 
 // Start begins the metric collection and reporting process.
@@ -87,10 +88,12 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 
 	a.l.Info().Int("batchSize", a.cfg.BatchSize).Int("batchCount", batchCount).Msg("sending metrics")
 
-	errCh := make(chan error, batchCount)
+	g, ctx := errgroup.WithContext(ctx)
 	batchCh := make(chan []*model.MetricsDto, batchCount)
 	for range a.cfg.RateLimit {
-		go a.sendMetricsBatch(ctx, batchCh, errCh)
+		g.Go(func() error {
+			return a.sendMetricsBatch(ctx, batchCh)
+		})
 	}
 
 	for batch := range slices.Chunk(metrics, a.cfg.BatchSize) {
@@ -98,26 +101,19 @@ func (a *Agent) sendAllMetrics(ctx context.Context, coll *collector.Collector) e
 	}
 	close(batchCh)
 
-	success := true
-	for range batchCount {
-		if err := <-errCh; err != nil {
-			success = false
-		}
-	}
-
-	if !success {
+	a.l.Debug().Msg("waiting for batch tasks to complete")
+	if err := g.Wait(); err != nil {
 		return errs.Wrap(errors.New("send all metrics"))
 	}
 
 	return nil
 }
 
-func (a *Agent) sendMetricsBatch(ctx context.Context, batchCh <-chan []*model.MetricsDto, errCh chan<- error) {
+func (a *Agent) sendMetricsBatch(ctx context.Context, batchCh <-chan []*model.MetricsDto) error {
 	for batch := range batchCh {
 		req, err := a.createRequest(ctx, batch)
 		if err != nil {
-			errCh <- errs.Wrap(err, "create request")
-			continue
+			return errs.Wrap(err, "create request")
 		}
 
 		var buff bytes.Buffer
@@ -143,16 +139,15 @@ func (a *Agent) sendMetricsBatch(ctx context.Context, batchCh <-chan []*model.Me
 		})
 		if err != nil {
 			if errors.Is(err, retry.ErrUnretriable) {
-				errCh <- errs.Wrap(ErrUpdateMetric)
-				continue
+				return errs.Wrap(ErrUpdateMetric)
 			}
-			errCh <- errs.Wrap(err, "send request")
-			continue
+			return errs.Wrap(err, "send request")
 		}
 
 		a.l.Info().Msg("sent metrics batch successfully")
-		errCh <- nil
 	}
+
+	return nil
 }
 
 func (a *Agent) createRequest(ctx context.Context, batch []*model.MetricsDto) (*http.Request, error) {
