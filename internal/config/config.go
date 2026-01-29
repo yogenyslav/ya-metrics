@@ -33,12 +33,19 @@ type DumpConfig struct {
 	Restore         bool
 }
 
+// AuditConfig holds settings for audit logging.
+type AuditConfig struct {
+	File string
+	URL  string
+}
+
 // Config holds the entire application settings.
 type Config struct {
 	Server *ServerConfig
 	Dump   *DumpConfig
 	DB     *DatabaseConfig
 	Retry  *retry.Config
+	Audit  *AuditConfig
 }
 
 // NewConfig creates a new Config with cli args or default values.
@@ -55,6 +62,8 @@ func NewConfig() (*Config, error) {
 	restoreFlag := flags.Bool("r", false, "восстановление метрик из файла при старте сервера")
 	dbDsnFlag := flags.String("d", "", "строка с адресом подключения к БД")
 	secureKeyFlag := flags.String("k", "", "ключ для подписи сигнатуры сообщений")
+	auditFileFlag := flags.String("audit-file", "", "путь к файлу аудита")
+	auditURLFlag := flags.String("audit-url", "", "адрес сервиса аудита")
 
 	err := flags.Parse(os.Args[1:])
 	if err != nil {
@@ -78,6 +87,10 @@ func NewConfig() (*Config, error) {
 		Retry: &retry.Config{
 			MaxRetries:         retry.DefaultRetries,
 			LinearBackoffMilli: retry.DefaultLinearBackoffMilli,
+		},
+		Audit: &AuditConfig{
+			File: pkg.GetEnv("AUDIT_FILE", *auditFileFlag),
+			URL:  pkg.GetEnv("AUDIT_URL", *auditURLFlag),
 		},
 	}, nil
 }

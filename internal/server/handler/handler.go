@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/database"
 )
@@ -23,17 +24,24 @@ type metricService interface {
 	ListMetrics(ctx context.Context) ([]*model.MetricsDto, error)
 }
 
+//go:generate mockgen -destination=../../../tests/mocks/audit.go -package=mocks . auditLogger
+type auditLogger interface {
+	LogMetrics(ctx context.Context, metrics []string, ipAddr string) error
+}
+
 // Handler serves HTTP requests.
 type Handler struct {
-	ms metricService
-	db database.DB
+	ms    metricService
+	db    database.DB
+	audit auditLogger
 }
 
 // NewHandler creates new HTTP handler.
-func NewHandler(ms metricService, db database.DB) *Handler {
+func NewHandler(ms metricService, db database.DB, audit auditLogger) *Handler {
 	return &Handler{
-		ms: ms,
-		db: db,
+		ms:    ms,
+		db:    db,
+		audit: audit,
 	}
 }
 
@@ -61,6 +69,7 @@ func (h *Handler) sendError(w http.ResponseWriter, wrappedErr error) {
 
 	statusCode := http.StatusInternalServerError
 	err := wrappedErr.Error()
+	log.Debug().Err(wrappedErr).Msg("handler error")
 
 	for e, code := range errStatusCodes {
 		if errors.Is(wrappedErr, e) {

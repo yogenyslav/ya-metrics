@@ -5,10 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/yogenyslav/ya-metrics/pkg/database"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestHandler_Ping(t *testing.T) {
@@ -52,7 +52,7 @@ func TestHandler_Ping(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewHandler(nil, tt.db())
+			h := NewHandler(nil, tt.db(), nil)
 			h.Ping(tt.w, tt.r)
 
 			resp := tt.w.(*httptest.ResponseRecorder)

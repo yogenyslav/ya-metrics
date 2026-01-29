@@ -8,9 +8,9 @@ const (
 
 // Metrics represents a metric with its properties.
 type Metrics[T int64 | float64] struct {
-	ID    string `json:"id"`
-	Type  string `json:"type"`
-	Value T      `json:"value"`
+	ID    string `json:"id"    db:"id"`
+	Type  string `json:"type"  db:"mtype"`
+	Value T      `json:"value" db:"value"`
 }
 
 // NewGaugeMetric creates a new gauge metric.

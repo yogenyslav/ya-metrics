@@ -91,7 +91,7 @@ func TestService_GetMetric(t *testing.T) {
 				}
 			}
 
-			s := NewService(gr, cr)
+			s := NewService(gr, cr, nil)
 			metric, err := s.GetMetric(context.Background(), tt.metricType, tt.metricID)
 			if tt.wantErr {
 				require.Error(t, err)

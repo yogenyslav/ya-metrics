@@ -9,8 +9,10 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 	"github.com/yogenyslav/ya-metrics/internal/config"
+	"github.com/yogenyslav/ya-metrics/internal/server/audit"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
 	"github.com/yogenyslav/ya-metrics/internal/server/middleware"
 	"github.com/yogenyslav/ya-metrics/internal/server/repository"
@@ -29,7 +31,7 @@ type Dumper interface {
 type Server struct {
 	router chi.Router
 	cfg    *config.Config
-	pg     database.PostgresTxDB
+	pg     database.TxDB
 	dumper Dumper
 }
 
@@ -44,6 +46,7 @@ func NewServer(
 		middleware.WithCompression(middleware.GzipCompression),
 		middleware.WithSignature(cfg.Server.SecureKey),
 	)
+	router.Mount("/debug", chimw.Profiler())
 
 	srv := &Server{
 		router: router,
@@ -93,9 +96,10 @@ func (s *Server) Start() error {
 		counterRepo = repository.NewMetricPostgresRepo[int64](s.pg)
 	}
 
-	metricService := service.NewService(gaugeRepo, counterRepo)
+	metricService := service.NewService(gaugeRepo, counterRepo, database.NewUnitOfWork(s.pg))
+	audit := audit.New(s.cfg.Audit)
 
-	h := handler.NewHandler(metricService, s.pg)
+	h := handler.NewHandler(metricService, s.pg, audit)
 	h.RegisterRoutes(s.router)
 
 	go s.listen()

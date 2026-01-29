@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,10 +13,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
+	"github.com/yogenyslav/ya-metrics/internal/server/repository"
+	"github.com/yogenyslav/ya-metrics/internal/server/service"
 	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/database"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestHandler_UpdateMetric(t *testing.T) {
@@ -25,6 +29,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 		name        string
 		ms          func() metricService
 		db          database.DB
+		audit       func() auditLogger
 		metricType  string
 		metrictName string
 		metricValue string
@@ -46,6 +51,13 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				m.EXPECT().
+					LogMetrics(gomock.Any(), []string{"metric1"}, gomock.Any()).
+					Return(nil)
+				return m
+			},
 			metricType:  model.Gauge,
 			metrictName: "metric1",
 			metricValue: "123.45",
@@ -67,14 +79,25 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				m.EXPECT().
+					LogMetrics(gomock.Any(), []string{"metric1"}, gomock.Any()).
+					Return(nil)
+				return m
+			},
 			metricType:  model.Counter,
 			metrictName: "metric1",
 			metricValue: "123",
 			wantCode:    http.StatusOK,
 		},
 		{
-			name:        "UpdateMetric with missing metric name",
-			ms:          func() metricService { return new(mocks.MockMetricService) },
+			name: "UpdateMetric with missing metric name",
+			ms:   func() metricService { return new(mocks.MockMetricService) },
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				return m
+			},
 			metricType:  model.Gauge,
 			metricValue: "123.45",
 			wantCode:    http.StatusNotFound,
@@ -94,6 +117,10 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				m := new(mocks.MockDB)
 				return m
 			}(),
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				return m
+			},
 			metricType:  "invalid",
 			metrictName: "metric1",
 			metricValue: "123.45",
@@ -109,7 +136,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				t.Run(tt.name+" raw request", func(t *testing.T) {
 					t.Parallel()
 
-					h := NewHandler(tt.ms(), tt.db)
+					h := NewHandler(tt.ms(), tt.db, tt.audit())
 
 					writer := httptest.NewRecorder()
 					req := httptest.NewRequest(
@@ -129,7 +156,7 @@ func TestHandler_UpdateMetric(t *testing.T) {
 				t.Run(tt.name+" json request", func(t *testing.T) {
 					t.Parallel()
 
-					h := NewHandler(tt.ms(), tt.db)
+					h := NewHandler(tt.ms(), tt.db, tt.audit())
 
 					data := model.MetricsDto{
 						Type: tt.metricType,
@@ -175,6 +202,7 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 	tests := []struct {
 		name     string
 		ms       func() metricService
+		audit    func() auditLogger
 		metrics  []model.MetricsDto
 		wantCode int
 	}{
@@ -194,6 +222,13 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 						Delta: pkg.Ptr(int64(100)),
 					},
 				}).Return(nil)
+				return m
+			},
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				m.EXPECT().
+					LogMetrics(gomock.Any(), []string{"metric1", "metric2"}, gomock.Any()).
+					Return(nil)
 				return m
 			},
 			metrics: []model.MetricsDto{
@@ -218,6 +253,10 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 					Return(errs.ErrInvalidMetricType)
 				return m
 			},
+			audit: func() auditLogger {
+				m := mocks.NewMockauditLogger(gomock.NewController(t))
+				return m
+			},
 			metrics: []model.MetricsDto{
 				{
 					ID:    "metric1",
@@ -234,7 +273,7 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 			tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				h := NewHandler(tt.ms(), nil)
+				h := NewHandler(tt.ms(), nil, tt.audit())
 
 				body, err := json.Marshal(tt.metrics)
 				require.NoError(t, err)
@@ -252,4 +291,116 @@ func TestHandler_UpdateMetricsBatch(t *testing.T) {
 			},
 		)
 	}
+}
+
+func BenchmarkHandler_UpdateMetric(b *testing.B) {
+	mockAudit := mocks.NewMockauditLogger(gomock.NewController(b))
+	mockAudit.EXPECT().
+		LogMetrics(gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes()
+
+	b.Run("in memory repo", func(b *testing.B) {
+		gaugeRepo := repository.NewMetricInMemRepo(repository.StorageState[float64]{})
+		counterRepo := repository.NewMetricInMemRepo(repository.StorageState[int64]{})
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			var data []byte
+			if i%2 == 0 {
+				data = getGaugeData(b, float64(i))
+			} else {
+				data = getCounterData(b, int64(i))
+			}
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/update", data)
+			h.UpdateMetricJSON(writer, req)
+		}
+	})
+
+	b.Run("mock postgres repo", func(b *testing.B) {
+		mockDB := mocks.NewMockDB(gomock.NewController(b))
+		gaugeRepo := repository.NewMetricPostgresRepo[float64](mockDB)
+		counterRepo := repository.NewMetricPostgresRepo[int64](mockDB)
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		mockDB.EXPECT().
+			Exec(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(int64(1), nil).
+			AnyTimes()
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			var data []byte
+			if i%2 == 0 {
+				data = getGaugeData(b, float64(i))
+			} else {
+				data = getCounterData(b, int64(i))
+			}
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/update", data)
+			h.UpdateMetricJSON(writer, req)
+		}
+	})
+}
+
+func BenchmarkHandler_UpdateMetricsBatch(b *testing.B) {
+	mockAudit := mocks.NewMockauditLogger(gomock.NewController(b))
+	mockAudit.EXPECT().
+		LogMetrics(gomock.Any(), gomock.Any(), gomock.Any()).
+		AnyTimes()
+
+	b.Run("in memory repo", func(b *testing.B) {
+		gaugeRepo := repository.NewMetricInMemRepo(repository.StorageState[float64]{})
+		counterRepo := repository.NewMetricInMemRepo(repository.StorageState[int64]{})
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		uow.EXPECT().
+			WithTx(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+				return fn(ctx)
+			}).
+			AnyTimes()
+
+		data := getBatchData(b, float64(0), int64(0))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/updates", data)
+			h.UpdateMetricsBatch(writer, req)
+		}
+	})
+
+	b.Run("mock postgres repo", func(b *testing.B) {
+		mockDB := mocks.NewMockTxDB(gomock.NewController(b))
+		gaugeRepo := repository.NewMetricPostgresRepo[float64](mockDB)
+		counterRepo := repository.NewMetricPostgresRepo[int64](mockDB)
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(b))
+		svc := service.NewService(gaugeRepo, counterRepo, uow)
+		h := NewHandler(svc, nil, mockAudit)
+
+		mockDB.EXPECT().
+			Exec(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(int64(1), nil).
+			AnyTimes()
+
+		uow.EXPECT().
+			WithTx(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ctx context.Context) error) error {
+				return fn(ctx)
+			}).
+			AnyTimes()
+
+		data := getBatchData(b, float64(0), int64(0))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			req, writer := getRequestAndWriter(b, http.MethodPost, "/updates", data)
+			h.UpdateMetricsBatch(writer, req)
+		}
+	})
 }

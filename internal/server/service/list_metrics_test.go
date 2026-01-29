@@ -57,7 +57,7 @@ func TestService_ListMetrics(t *testing.T) {
 			gr.On("List", mock.Anything).Return(tt.gaugeMetrics, nil)
 			cr.On("List", mock.Anything).Return(tt.counterMetrics, nil)
 
-			s := NewService(gr, cr)
+			s := NewService(gr, cr, nil)
 			metrics, err := s.ListMetrics(ctx)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, tt.want, metrics)
