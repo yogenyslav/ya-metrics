@@ -123,3 +123,33 @@ func (p *Postgres) BeginTx(ctx context.Context) (pgx.Tx, error) {
 
 	return tx, nil
 }
+
+// beginTx starts a new transaction and returns a new context containing it.
+func (p *Postgres) beginTx(ctx context.Context) (context.Context, error) {
+	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel: pgx.Serializable,
+	})
+	if err != nil {
+		return nil, err
+	}
+	ctx = context.WithValue(ctx, TxKey, tx)
+	return ctx, nil
+}
+
+// commitTx commits the transaction in the context.
+func (p *Postgres) commitTx(ctx context.Context) error {
+	tx, ok := ctx.Value(TxKey).(pgx.Tx)
+	if !ok {
+		return ErrNoTx
+	}
+	return tx.Commit(ctx)
+}
+
+// rollbackTx rollbacks the transaction in the context.
+func (p *Postgres) rollbackTx(ctx context.Context) error {
+	tx, ok := ctx.Value(TxKey).(pgx.Tx)
+	if !ok {
+		return ErrNoTx
+	}
+	return tx.Rollback(ctx)
+}

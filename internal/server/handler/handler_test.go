@@ -1,14 +1,69 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
+
+func getRequestAndWriter(b *testing.B, method, url string, body []byte) (*http.Request, *httptest.ResponseRecorder) {
+	b.Helper()
+	req := httptest.NewRequest(
+		method,
+		url,
+		bytes.NewReader(body),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	writer := httptest.NewRecorder()
+	return req, writer
+}
+
+func getGaugeData(b *testing.B, i float64) []byte {
+	b.Helper()
+	data := model.MetricsDto{
+		ID:    "gauge_metric",
+		Type:  model.Gauge,
+		Value: &i,
+	}
+	raw, _ := json.Marshal(data)
+	return raw
+}
+
+func getCounterData(b *testing.B, i int64) []byte {
+	b.Helper()
+	data := model.MetricsDto{
+		ID:    "counter_metric",
+		Type:  model.Counter,
+		Delta: &i,
+	}
+	raw, _ := json.Marshal(data)
+	return raw
+}
+
+func getBatchData(b *testing.B, gaugeVal float64, counterVal int64) []byte {
+	b.Helper()
+	data := []model.MetricsDto{
+		{
+			ID:    "gauge_metric",
+			Type:  model.Gauge,
+			Value: &gaugeVal,
+		},
+		{
+			ID:    "counter_metric",
+			Type:  model.Counter,
+			Delta: &counterVal,
+		},
+	}
+	raw, _ := json.Marshal(data)
+	return raw
+}
 
 func TestHandler_sendError(t *testing.T) {
 	t.Parallel()

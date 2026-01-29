@@ -5,10 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/yogenyslav/ya-metrics/pkg/database"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestHandler_Ping(t *testing.T) {
