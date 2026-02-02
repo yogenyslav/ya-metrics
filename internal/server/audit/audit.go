@@ -15,6 +15,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const defaultAuditTimeoutSec = 3
+
 type source interface {
 	Log(ctx context.Context, data []byte) error
 }
@@ -28,7 +30,7 @@ func (fs *fileSource) Log(ctx context.Context, data []byte) error {
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
-	file, err := os.OpenFile(fs.filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
+	file, err := os.OpenFile(fs.filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return errs.Wrap(err, "open audit log file")
 	}
@@ -42,7 +44,8 @@ func (fs *fileSource) Log(ctx context.Context, data []byte) error {
 }
 
 type serviceSource struct {
-	url string
+	url    string
+	client *http.Client
 }
 
 func (ss *serviceSource) Log(ctx context.Context, data []byte) error {
@@ -52,7 +55,7 @@ func (ss *serviceSource) Log(ctx context.Context, data []byte) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := ss.client.Do(req)
 	if err != nil {
 		return errs.Wrap(err, "send audit log request")
 	}
@@ -90,6 +93,9 @@ func New(cfg *config.AuditConfig) *Audit {
 	if cfg.URL != "" {
 		sources = append(sources, &serviceSource{
 			url: cfg.URL,
+			client: &http.Client{
+				Timeout: time.Second * defaultAuditTimeoutSec,
+			},
 		})
 	}
 	return &Audit{

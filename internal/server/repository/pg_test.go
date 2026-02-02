@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
-	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -38,10 +37,10 @@ func TestMetricPostgresRepo_Get(t *testing.T) {
 					mockDB.EXPECT().
 						QueryRow(gomock.Any(), gomock.Any(), getCounterMetric, gomock.Any(), gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
-							d := dest.(*model.MetricsDto)
+							d := dest.(*model.Metrics[int64])
 							d.ID = "metric1"
 							d.Type = model.Counter
-							d.Delta = pkg.Ptr(int64(10))
+							d.Value = int64(10)
 							return nil
 						})
 					return mockDB
@@ -96,11 +95,10 @@ func TestMetricPostgresRepo_Get(t *testing.T) {
 					mockDB.EXPECT().
 						QueryRow(gomock.Any(), gomock.Any(), getGaugeMetric, gomock.Any(), gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
-							d := dest.(*model.MetricsDto)
+							d := dest.(*model.Metrics[float64])
 							d.ID = "metric1"
 							d.Type = model.Gauge
-							val := 123.45
-							d.Value = &val
+							d.Value = 123.45
 							return nil
 						})
 					return mockDB

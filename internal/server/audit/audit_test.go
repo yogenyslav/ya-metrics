@@ -81,7 +81,8 @@ func Test_serviceSource_Log(t *testing.T) {
 		t.Parallel()
 
 		src := &serviceSource{
-			url: "",
+			url:    "",
+			client: http.DefaultClient,
 		}
 
 		data := []byte(`{"ts":1625077765,"metrics":["metric1","metric2"],"ip_address":"127.0.0.1"}`)
@@ -100,7 +101,8 @@ func Test_serviceSource_Log(t *testing.T) {
 		defer server.Close()
 
 		src := &serviceSource{
-			url: server.URL,
+			url:    server.URL,
+			client: http.DefaultClient,
 		}
 
 		data := []byte(`{"ts":1625077765,"metrics":["metric1","metric2"],"ip_address":"127.0.0.1"}`)
