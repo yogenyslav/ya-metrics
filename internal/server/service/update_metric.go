@@ -28,37 +28,15 @@ func (s *Service) UpdateMetric(ctx context.Context, req *model.MetricsDto) error
 
 // UpdateMetricsBatch updates a batch of metrics.
 func (s *Service) UpdateMetricsBatch(ctx context.Context, reqs []*model.MetricsDto) error {
-	var (
-		gauges   []*model.Metrics[float64]
-		counters []*model.Metrics[int64]
-	)
-
-	for _, req := range reqs {
-		switch req.Type {
-		case model.Gauge:
-			gauges = append(gauges, &model.Metrics[float64]{
-				ID:    req.ID,
-				Type:  model.Gauge,
-				Value: *req.Value,
-			})
-		case model.Counter:
-			counters = append(counters, &model.Metrics[int64]{
-				ID:    req.ID,
-				Type:  model.Counter,
-				Value: *req.Delta,
-			})
-		default:
-			return errs.Wrap(errs.ErrInvalidMetricType)
+	err := s.uow.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		for _, req := range reqs {
+			err = s.UpdateMetric(ctx, req)
+			if err != nil {
+				return errs.Wrap(err, "update metric in tx")
+			}
 		}
-	}
-
-	if err := s.gr.SetBatch(ctx, gauges); err != nil {
-		return errs.Wrap(err, "batch set gauge metrics")
-	}
-
-	if err := s.cr.UpdateBatch(ctx, counters); err != nil {
-		return errs.Wrap(err, "batch update counter metrics")
-	}
-
-	return nil
+		return nil
+	})
+	return errs.Wrap(err, "update metrics batch")
 }

@@ -5,12 +5,24 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
 // GzipCompression is the compression type for gzip.
 const GzipCompression string = "gzip"
+
+var gzipWriterPool = &sync.Pool{
+	New: func() any {
+		return gzip.NewWriter(io.Discard)
+	},
+}
+
+type writer interface {
+	io.WriteCloser
+	Reset(io.Writer)
+}
 
 type nopCloser struct {
 	io.Writer
@@ -21,20 +33,23 @@ func (c nopCloser) Close() error {
 	return nil
 }
 
+// Reset implements gzip.Reset method.
+func (c nopCloser) Reset(io.Writer) {}
+
 // compressionResponseWriter is a wrapper around http.ResponseWriter to handle response compression.
 type compressionResponseWriter struct {
 	w               http.ResponseWriter
-	compression     io.WriteCloser
+	compression     writer
 	compressionType string
 }
 
 // newCompressResponseWriter creates a new compressionResponseWriter with specified compression type.
 func newCompressResponseWriter(w http.ResponseWriter, compressionType string) *compressionResponseWriter {
-	var compression io.WriteCloser
+	var compression writer
 
 	switch compressionType {
 	case GzipCompression:
-		compression = gzip.NewWriter(w)
+		compression = gzipWriterPool.Get().(*gzip.Writer)
 	default:
 		compression = nopCloser{Writer: w}
 	}
@@ -53,6 +68,7 @@ func (c *compressionResponseWriter) Header() http.Header {
 
 // Write implements http.ResponseWriter Write method.
 func (c *compressionResponseWriter) Write(b []byte) (int, error) {
+	c.compression.Reset(c.w)
 	return c.compression.Write(b)
 }
 
@@ -66,6 +82,7 @@ func (c *compressionResponseWriter) WriteHeader(statusCode int) {
 
 // Close the compression writer.
 func (c *compressionResponseWriter) Close() error {
+	defer gzipWriterPool.Put(c.compression)
 	return c.compression.Close()
 }
 
@@ -115,6 +132,11 @@ func (c *compressionReader) Close() error {
 func WithCompression(compression string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/debug/pprof") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			acceptEncoding := r.Header.Get("Accept-Encoding")
 			if strings.Contains(acceptEncoding, compression) {
 				writer := newCompressResponseWriter(w, compression)

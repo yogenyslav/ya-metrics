@@ -5,12 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yogenyslav/ya-metrics/internal/model"
-	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestMetricPostgresRepo_Get(t *testing.T) {
@@ -18,7 +17,7 @@ func TestMetricPostgresRepo_Get(t *testing.T) {
 
 	type testCase[T int64 | float64] struct {
 		name       string
-		db         func() *mocks.MockPostgresTxDB
+		db         func() *mocks.MockDB
 		metricName string
 		wantMetric *model.Metrics[T]
 		wantErr    bool
@@ -33,15 +32,15 @@ func TestMetricPostgresRepo_Get(t *testing.T) {
 		tests := []testCase[int64]{
 			{
 				name: "Get existing int64 metric",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QueryRow(gomock.Any(), gomock.Any(), getMetric, gomock.Any(), gomock.Any()).
+						QueryRow(gomock.Any(), gomock.Any(), getCounterMetric, gomock.Any(), gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
-							d := dest.(*model.MetricsDto)
+							d := dest.(*model.Metrics[int64])
 							d.ID = "metric1"
 							d.Type = model.Counter
-							d.Delta = pkg.Ptr(int64(10))
+							d.Value = int64(10)
 							return nil
 						})
 					return mockDB
@@ -52,10 +51,10 @@ func TestMetricPostgresRepo_Get(t *testing.T) {
 			},
 			{
 				name: "Get non-existing int64 metric",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QueryRow(gomock.Any(), gomock.Any(), getMetric, gomock.Any(), gomock.Any()).
+						QueryRow(gomock.Any(), gomock.Any(), getCounterMetric, gomock.Any(), gomock.Any()).
 						Return(errors.New("not found"))
 					return mockDB
 				},
@@ -91,16 +90,15 @@ func TestMetricPostgresRepo_Get(t *testing.T) {
 		tests := []testCase[float64]{
 			{
 				name: "Get existing float64 metric",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QueryRow(gomock.Any(), gomock.Any(), getMetric, gomock.Any(), gomock.Any()).
+						QueryRow(gomock.Any(), gomock.Any(), getGaugeMetric, gomock.Any(), gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
-							d := dest.(*model.MetricsDto)
+							d := dest.(*model.Metrics[float64])
 							d.ID = "metric1"
 							d.Type = model.Gauge
-							val := 123.45
-							d.Value = &val
+							d.Value = 123.45
 							return nil
 						})
 					return mockDB
@@ -111,10 +109,10 @@ func TestMetricPostgresRepo_Get(t *testing.T) {
 			},
 			{
 				name: "Get non-existing float64 metric",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QueryRow(gomock.Any(), gomock.Any(), getMetric, gomock.Any(), gomock.Any()).
+						QueryRow(gomock.Any(), gomock.Any(), getGaugeMetric, gomock.Any(), gomock.Any()).
 						Return(errors.New("not found"))
 					return mockDB
 				},
@@ -147,7 +145,7 @@ func TestMetricPostgresRepo_List(t *testing.T) {
 
 	type testCase[T int64 | float64] struct {
 		name    string
-		db      func() *mocks.MockPostgresTxDB
+		db      func() *mocks.MockDB
 		want    []model.Metrics[T]
 		wantErr bool
 	}
@@ -161,10 +159,10 @@ func TestMetricPostgresRepo_List(t *testing.T) {
 		tests := []testCase[int64]{
 			{
 				name: "List int64 metrics",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QuerySlice(gomock.Any(), gomock.Any(), listMetrics, gomock.Any()).
+						QuerySlice(gomock.Any(), gomock.Any(), listCounterMetrics, gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
 							d := dest.(*[]model.Metrics[int64])
 							*d = []model.Metrics[int64]{
@@ -183,10 +181,10 @@ func TestMetricPostgresRepo_List(t *testing.T) {
 			},
 			{
 				name: "List from empty int64 repo",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QuerySlice(gomock.Any(), gomock.Any(), listMetrics, gomock.Any()).
+						QuerySlice(gomock.Any(), gomock.Any(), listCounterMetrics, gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
 							d := dest.(*[]model.Metrics[int64])
 							*d = []model.Metrics[int64]{}
@@ -225,10 +223,10 @@ func TestMetricPostgresRepo_List(t *testing.T) {
 		tests := []testCase[float64]{
 			{
 				name: "List float64 metrics",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QuerySlice(gomock.Any(), gomock.Any(), listMetrics, gomock.Any()).
+						QuerySlice(gomock.Any(), gomock.Any(), listGaugeMetrics, gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
 							d := dest.(*[]model.Metrics[float64])
 							*d = []model.Metrics[float64]{
@@ -247,10 +245,10 @@ func TestMetricPostgresRepo_List(t *testing.T) {
 			},
 			{
 				name: "List from empty float64 repo",
-				db: func() *mocks.MockPostgresTxDB {
-					mockDB := mocks.NewMockPostgresTxDB(ctrl)
+				db: func() *mocks.MockDB {
+					mockDB := mocks.NewMockDB(ctrl)
 					mockDB.EXPECT().
-						QuerySlice(gomock.Any(), gomock.Any(), listMetrics, gomock.Any()).
+						QuerySlice(gomock.Any(), gomock.Any(), listGaugeMetrics, gomock.Any()).
 						DoAndReturn(func(ctx context.Context, dest any, query string, args ...any) error {
 							d := dest.(*[]model.Metrics[float64])
 							*d = []model.Metrics[float64]{}
@@ -289,14 +287,14 @@ func TestMetricPostgresRepo_Set(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		db        func() *mocks.MockPostgresTxDB
+		db        func() *mocks.MockDB
 		metric    *model.Metrics[float64]
 		wantError bool
 	}{
 		{
 			name: "Set gauge metric successfully",
-			db: func() *mocks.MockPostgresTxDB {
-				mockDB := mocks.NewMockPostgresTxDB(ctrl)
+			db: func() *mocks.MockDB {
+				mockDB := mocks.NewMockDB(ctrl)
 				mockDB.EXPECT().
 					Exec(gomock.Any(), setGaugeMetric, gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(int64(1), nil)
@@ -307,8 +305,8 @@ func TestMetricPostgresRepo_Set(t *testing.T) {
 		},
 		{
 			name: "Set gauge metric with DB error",
-			db: func() *mocks.MockPostgresTxDB {
-				mockDB := mocks.NewMockPostgresTxDB(ctrl)
+			db: func() *mocks.MockDB {
+				mockDB := mocks.NewMockDB(ctrl)
 				mockDB.EXPECT().
 					Exec(gomock.Any(), setGaugeMetric, gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(int64(0), errors.New("db error"))
@@ -343,14 +341,14 @@ func TestMetricPostgresRepo_Update(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		db        func() *mocks.MockPostgresTxDB
+		db        func() *mocks.MockDB
 		metric    *model.Metrics[int64]
 		wantError bool
 	}{
 		{
 			name: "Update counter metric successfully",
-			db: func() *mocks.MockPostgresTxDB {
-				mockDB := mocks.NewMockPostgresTxDB(ctrl)
+			db: func() *mocks.MockDB {
+				mockDB := mocks.NewMockDB(ctrl)
 				mockDB.EXPECT().
 					Exec(gomock.Any(), updateCounterMetric, gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(int64(1), nil)
@@ -361,8 +359,8 @@ func TestMetricPostgresRepo_Update(t *testing.T) {
 		},
 		{
 			name: "Update counter metric with DB error",
-			db: func() *mocks.MockPostgresTxDB {
-				mockDB := mocks.NewMockPostgresTxDB(ctrl)
+			db: func() *mocks.MockDB {
+				mockDB := mocks.NewMockDB(ctrl)
 				mockDB.EXPECT().
 					Exec(gomock.Any(), updateCounterMetric, gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(int64(0), errors.New("db error"))
