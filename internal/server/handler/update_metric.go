@@ -48,12 +48,13 @@ func (h *Handler) UpdateMetricRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	err := h.audit.LogMetrics(r.Context(), []string{m.ID}, r.RemoteAddr)
 	if err != nil {
 		h.sendError(w, errs.Wrap(err))
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // UpdateMetricJSON handles JSON metric update requests.
@@ -81,12 +82,13 @@ func (h *Handler) UpdateMetricJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	err = h.audit.LogMetrics(r.Context(), []string{req.ID}, r.RemoteAddr)
 	if err != nil {
 		h.sendError(w, errs.Wrap(err))
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // UpdateMetricsBatch handles batch metric update requests.
@@ -119,10 +121,11 @@ func (h *Handler) UpdateMetricsBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	err = h.audit.LogMetrics(r.Context(), metricsNames, r.RemoteAddr)
 	if err != nil {
 		h.sendError(w, errs.Wrap(err))
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }

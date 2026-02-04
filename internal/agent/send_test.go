@@ -189,13 +189,13 @@ func TestAgent_sendAllMetrics(t *testing.T) {
 				BatchSize:         tt.batchSize,
 			}, nil, zerolog.Ctx(ctx))
 
+			successCalls := max(rand.IntN(batchCount), 1)
 			if !tt.wantErr {
 				client.On("Do", mock.Anything).Return(&http.Response{
 					StatusCode: http.StatusOK,
 					Body:       http.NoBody,
 				}, nil).Times(batchCount)
 			} else {
-				successCalls := max(rand.IntN(batchCount), 1)
 				client.On("Do", mock.Anything).Return(&http.Response{
 					StatusCode: http.StatusOK,
 					Body:       http.NoBody,
@@ -210,11 +210,11 @@ func TestAgent_sendAllMetrics(t *testing.T) {
 			err := a.sendAllMetrics(ctx, c)
 			if tt.wantErr {
 				require.Error(t, err)
+				client.AssertNumberOfCalls(t, "Do", successCalls+1)
 			} else {
 				require.NoError(t, err)
+				client.AssertNumberOfCalls(t, "Do", batchCount)
 			}
-
-			client.AssertNumberOfCalls(t, "Do", batchCount)
 		})
 	}
 }
