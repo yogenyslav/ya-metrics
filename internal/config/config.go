@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"os"
+	"strings"
 
 	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
@@ -50,7 +51,7 @@ type Config struct {
 
 // NewConfig creates a new Config with cli args or default values.
 func NewConfig() (*Config, error) {
-	flags := flag.NewFlagSet("server", flag.ExitOnError)
+	flags := flag.NewFlagSet("server", flag.ContinueOnError)
 	addrFlag := flags.String("a", defaultServerAddr, "адрес сервера в формате ip:port")
 	logLevelFlag := flags.String("l", "debug", "уровень логирования (debug, info, error)")
 	fileStoragePathFlag := flags.String("f", "metrics.json", "путь к файлу для хранения метрик")
@@ -65,8 +66,7 @@ func NewConfig() (*Config, error) {
 	auditFileFlag := flags.String("audit-file", "", "путь к файлу аудита")
 	auditURLFlag := flags.String("audit-url", "", "адрес сервиса аудита")
 
-	err := flags.Parse(os.Args[1:])
-	if err != nil {
+	if err := flags.Parse(os.Args[1:]); err != nil && !strings.HasPrefix(err.Error(), "flag provided but not defined") {
 		return nil, errs.Wrap(err, "parse flags")
 	}
 

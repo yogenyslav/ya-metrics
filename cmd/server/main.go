@@ -13,7 +13,6 @@ import (
 func main() {
 	if err := run(); err != nil {
 		log.Fatal().Err(err).Msg("server failed")
-		os.Exit(1)
 	}
 }
 

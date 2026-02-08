@@ -9,20 +9,20 @@ import (
 
 	"github.com/yogenyslav/ya-metrics/internal/agent"
 	"github.com/yogenyslav/ya-metrics/internal/agent/config"
+	"github.com/yogenyslav/ya-metrics/pkg/errs"
 	"github.com/yogenyslav/ya-metrics/pkg/secure"
 )
 
 func main() {
 	if err := run(); err != nil {
 		log.Fatal().Err(err).Msg("agent failed")
-		os.Exit(1)
 	}
 }
 
 func run() error {
 	cfg, err := config.NewConfig()
 	if err != nil {
-		return err
+		return errs.Wrap(err, "create config")
 	}
 
 	var sg *secure.SignatureGenerator
@@ -36,7 +36,7 @@ func run() error {
 
 	err = a.Start()
 	if err != nil {
-		return err
+		return errs.Wrap(err, "start agent")
 	}
 
 	return nil

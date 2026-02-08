@@ -55,3 +55,13 @@ func TestCollector_Collect(t *testing.T) {
 		},
 	)
 }
+
+func TestCollector_GetAllMetrics(t *testing.T) {
+	t.Parallel()
+
+	col := NewCollector(1, nil)
+	gaugeMetrics := col.GetAllGaugeMetrics()
+	counterMetrics := col.GetAllCounterMetrics()
+	allMetrics := col.GetAllMetrics()
+	assert.Len(t, allMetrics, len(gaugeMetrics)+len(counterMetrics))
+}

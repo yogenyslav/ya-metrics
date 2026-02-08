@@ -27,3 +27,4 @@ vendor/
 
 .env
 metric.json
+audit.log

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -24,7 +25,22 @@ import (
 // Dumper is an interface for metrics dumping.
 type Dumper interface {
 	middleware.Dumper
-	Start(ctx context.Context, gaugeRepo repository.Repo, counterRepo repository.Repo)
+	Start(
+		ctx context.Context,
+		gaugeRepo repository.Repo,
+		counterRepo repository.Repo,
+		newTicker repository.TickerFactory,
+		onTick func(context.Context, repository.Repo, repository.Repo) error,
+	)
+}
+
+type ticker struct {
+	*time.Ticker
+}
+
+// C implements Ticker for dumper.
+func (t *ticker) C() <-chan time.Time {
+	return t.C()
 }
 
 // Server serves HTTP requests.
@@ -145,7 +161,9 @@ func (s *Server) initRepos(ctx context.Context) (service.GaugeRepo, service.Coun
 			return nil, nil, errors.New("counter repo does not implement repository.Repo")
 		}
 
-		s.dumper.Start(ctx, dumpingGaugeRepo, dumpingCounterRepo)
+		s.dumper.Start(ctx, dumpingGaugeRepo, dumpingCounterRepo, func(d time.Duration) repository.Ticker {
+			return &ticker{time.NewTicker(d)}
+		}, s.dumper.Dump)
 		s.router.Use(
 			middleware.WithFileDumper(s.dumper, s.cfg.Dump.StoreInterval, dumpingGaugeRepo, dumpingCounterRepo),
 		)

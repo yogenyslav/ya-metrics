@@ -11,6 +11,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
+// Repo is an interface for repositories that can get metrics.
 type Repo interface {
 	GetMetrics(ctx context.Context) ([]*model.MetricsDto, error)
 }
@@ -30,23 +31,29 @@ func NewDumper(filePath string, intervalSec int) *fileDumper {
 }
 
 // Start the dumping process.
-func (d *fileDumper) Start(ctx context.Context, gaugeRepo Repo, counterRepo Repo) {
+func (d *fileDumper) Start(
+	ctx context.Context,
+	gaugeRepo Repo,
+	counterRepo Repo,
+	newTicker TickerFactory,
+	onTick func(context.Context, Repo, Repo) error,
+) {
 	if d.intervalSec <= 0 {
 		return
 	}
 
-	go func() {
-		var err error
+	ticker := newTicker(time.Second * time.Duration(d.intervalSec))
 
-		ticker := time.NewTicker(time.Duration(d.intervalSec) * time.Second)
+	go func() {
 		defer ticker.Stop()
+		var err error
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
-				err = d.Dump(ctx, gaugeRepo, counterRepo)
+			case <-ticker.C():
+				err = onTick(ctx, gaugeRepo, counterRepo)
 				if err != nil {
 					log.Ctx(ctx).Err(errs.Wrap(err)).Msg("dump metrics to file")
 				}

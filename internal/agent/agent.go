@@ -1,10 +1,8 @@
 package agent
 
 import (
-	"bytes"
 	"errors"
 	"net/http"
-	"sync"
 
 	"github.com/rs/zerolog"
 	"github.com/yogenyslav/ya-metrics/internal/agent/config"
@@ -25,12 +23,10 @@ type SignatureGenerator interface {
 
 // Agent struct to collect and send metrics to server.
 type Agent struct {
-	client   Client
-	cfg      *config.Config
-	sg       SignatureGenerator
-	l        *zerolog.Logger
-	buffPool *sync.Pool
-	mu       *sync.Mutex
+	client Client
+	cfg    *config.Config
+	sg     SignatureGenerator
+	l      *zerolog.Logger
 }
 
 // New creates a new Agent instance.
@@ -40,11 +36,5 @@ func New(client Client, cfg *config.Config, sg SignatureGenerator, l *zerolog.Lo
 		cfg:    cfg,
 		sg:     sg,
 		l:      l,
-		buffPool: &sync.Pool{
-			New: func() any {
-				return &bytes.Buffer{}
-			},
-		},
-		mu: &sync.Mutex{},
 	}
 }

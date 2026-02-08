@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -86,4 +87,41 @@ func Test_fileDumper_Dump(t *testing.T) {
 	]`
 
 	assert.JSONEq(t, want, string(storage))
+}
+
+type testTicker struct {
+	ch chan time.Time
+}
+
+// C implements Ticker.
+func (t *testTicker) C() <-chan time.Time {
+	return t.ch
+}
+
+// Stop implements Ticker.
+func (t *testTicker) Stop() {}
+
+func Test_fileDumper_Start(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ticker := &testTicker{ch: make(chan time.Time)}
+	getTicker := func(time.Duration) Ticker { return ticker }
+	called := make(chan struct{}, 1)
+	onTick := func(ctx context.Context, g Repo, c Repo) error {
+		called <- struct{}{}
+		return nil
+	}
+
+	d := &fileDumper{intervalSec: 1}
+	d.Start(ctx, nil, nil, getTicker, onTick)
+
+	ticker.ch <- time.Now()
+
+	select {
+	case <-called:
+		// ok
+	case <-time.After(time.Second):
+		t.Fail()
+	}
 }

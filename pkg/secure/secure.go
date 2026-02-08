@@ -16,7 +16,6 @@ type SignatureGenerator struct {
 }
 
 // NewSignatureGenerator creates a new SignatureGenerator with the given key and hash function.
-// If no hash function is provided, it defaults to HMAC-SHA256.
 func NewSignatureGenerator(key string) *SignatureGenerator {
 	return &SignatureGenerator{
 		key:        []byte(key),

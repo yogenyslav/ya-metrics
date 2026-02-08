@@ -31,7 +31,7 @@ type Config struct {
 
 // NewConfig creates a new Config with cli args or default values.
 func NewConfig() (*Config, error) {
-	flags := flag.NewFlagSet("agent", flag.ExitOnError)
+	flags := flag.NewFlagSet("agent", flag.ContinueOnError)
 	serverAddrFlag := flags.String("a", defaultServerAddr, "адрес сервера в формате ip:port")
 	pollIntervalFlag := flags.Int("p", defaultPollInterval, "интервал опроса метрик, сек.")
 	reportIntervalFlag := flags.Int("r", defaultReportInterval, "интервал отправки метрик на сервер, сек. ")
@@ -39,8 +39,7 @@ func NewConfig() (*Config, error) {
 	secureKeyFlag := flags.String("k", "", "ключ для подписи сигнатуры сообщений")
 	rateLimitFlag := flags.Int("l", 1, "максимальное число одновременных запросов к серверу")
 
-	err := flags.Parse(os.Args[1:])
-	if err != nil {
+	if err := flags.Parse(os.Args[1:]); err != nil && !strings.HasPrefix(err.Error(), "flag provided but not defined") {
 		return nil, errs.Wrap(err, "parse flags")
 	}
 
