@@ -40,7 +40,7 @@ type ticker struct {
 
 // C implements Ticker for dumper.
 func (t *ticker) C() <-chan time.Time {
-	return t.C()
+	return t.Ticker.C
 }
 
 // Server serves HTTP requests.
@@ -62,7 +62,6 @@ func NewServer(
 		middleware.WithCompression(middleware.GzipCompression),
 		middleware.WithSignature(cfg.Server.SecureKey),
 	)
-	router.Mount("/debug", chimw.Profiler())
 
 	srv := &Server{
 		router: router,
@@ -111,6 +110,7 @@ func (s *Server) Start() error {
 		gaugeRepo = repository.NewMetricPostgresRepo[float64](s.pg)
 		counterRepo = repository.NewMetricPostgresRepo[int64](s.pg)
 	}
+	s.router.Mount("/debug", chimw.Profiler())
 
 	metricService := service.NewService(gaugeRepo, counterRepo, database.NewUnitOfWork(s.pg))
 	audit := audit.New(s.cfg.Audit)
