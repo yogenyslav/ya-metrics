@@ -97,10 +97,7 @@ func TestService_UpdateMetric(t *testing.T) {
 				gr := &mocks.MockGaugeRepo{}
 				cr := &mocks.MockCounterRepo{}
 
-				s := Service{
-					gr: gr,
-					cr: cr,
-				}
+				s := NewService(gr, cr, nil)
 
 				switch tt.args.req.Type {
 				case model.Gauge:
@@ -153,11 +150,7 @@ func TestService_UpdateMetricsBatch(t *testing.T) {
 		cr := new(mocks.MockCounterRepo)
 		uow := mocks.NewMockUnitOfWork(gomock.NewController(t))
 
-		s := Service{
-			gr:  gr,
-			cr:  cr,
-			uow: uow,
-		}
+		s := NewService(gr, cr, uow)
 		metrics := []*model.MetricsDto{
 			{
 				ID:    "gauge_metric",
@@ -200,11 +193,7 @@ func TestService_UpdateMetricsBatch(t *testing.T) {
 		cr := new(mocks.MockCounterRepo)
 		uow := mocks.NewMockUnitOfWork(gomock.NewController(t))
 
-		s := Service{
-			gr:  gr,
-			cr:  cr,
-			uow: uow,
-		}
+		s := NewService(gr, cr, uow)
 		metrics := []*model.MetricsDto{
 			{
 				ID:    "gauge_metric",
