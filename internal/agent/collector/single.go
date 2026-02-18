@@ -7,6 +7,8 @@ import (
 )
 
 // GeneralMetrics holds general application metrics.
+//
+// generate:reset
 type GeneralMetrics struct {
 	PollCount   *model.Metrics[int64]
 	RandomValue *model.Metrics[float64]

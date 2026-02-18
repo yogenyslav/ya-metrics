@@ -7,6 +7,8 @@ import (
 )
 
 // MemoryMetrics holds various memory statistics.
+//
+// generate:reset
 type MemoryMetrics struct {
 	Alloc         *model.Metrics[float64]
 	BuckHashSys   *model.Metrics[float64]

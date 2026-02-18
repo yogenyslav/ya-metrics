@@ -7,6 +7,8 @@ const (
 )
 
 // Metrics represents a metric with its properties.
+//
+// generate:reset
 type Metrics[T int64 | float64] struct {
 	ID    string `json:"id"    db:"id"`
 	Type  string `json:"type"  db:"mtype"`
@@ -55,6 +57,8 @@ func (m *Metrics[T]) ToDto() *MetricsDto {
 }
 
 // MetricsDto is a struct for transferring metric data.
+//
+// generate:reset
 type MetricsDto struct {
 	ID    string   `json:"id"              db:"id"`
 	Type  string   `json:"type"            db:"mtype"`
