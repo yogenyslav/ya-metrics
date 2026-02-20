@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -44,10 +47,21 @@ func run() error {
 
 	a := agent.New(http.DefaultClient, cfg, sg, &l)
 
-	err = a.Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err = a.Start(ctx)
 	if err != nil {
 		return errs.Wrap(err, "start agent")
 	}
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	signal.Stop(stop)
+
+	cancel()
+	a.Shutdown()
 
 	return nil
 }

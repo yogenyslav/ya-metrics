@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,14 +36,18 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 						storage: StorageState[int64]{
 							"metric1": {ID: "metric1", Value: 10},
 						},
+						mu: &sync.RWMutex{},
 					},
 					args:       args{name: "metric1"},
 					wantMetric: &model.Metrics[int64]{ID: "metric1", Value: 10},
 					wantErr:    false,
 				},
 				{
-					name:       "Get non-existing int64 metric",
-					r:          MetricInMemRepo[int64]{storage: make(StorageState[int64])},
+					name: "Get non-existing int64 metric",
+					r: MetricInMemRepo[int64]{
+						storage: make(StorageState[int64]),
+						mu:      &sync.RWMutex{},
+					},
 					args:       args{name: "metric2"},
 					wantMetric: nil,
 					wantErr:    true,
@@ -77,14 +82,18 @@ func TestMetricInMemRepo_Get(t *testing.T) {
 						storage: StorageState[float64]{
 							"metric1": {ID: "metric1", Value: 10.5},
 						},
+						mu: &sync.RWMutex{},
 					},
 					args:       args{name: "metric1"},
 					wantMetric: &model.Metrics[float64]{ID: "metric1", Value: 10.5},
 					wantErr:    false,
 				},
 				{
-					name:       "Get non-existing float64 metric",
-					r:          MetricInMemRepo[float64]{storage: make(StorageState[float64])},
+					name: "Get non-existing float64 metric",
+					r: MetricInMemRepo[float64]{
+						storage: make(StorageState[float64]),
+						mu:      &sync.RWMutex{},
+					},
 					args:       args{name: "metric2"},
 					wantMetric: nil,
 					wantErr:    true,
@@ -129,7 +138,10 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 			tests := []testCase[int64]{
 				{
 					name: "Set int64 metric",
-					r:    MetricInMemRepo[int64]{storage: make(StorageState[int64])},
+					r: MetricInMemRepo[int64]{
+						storage: make(StorageState[int64]),
+						mu:      &sync.RWMutex{},
+					},
 					args: args[int64]{name: "metric1", value: 10},
 				},
 			}
@@ -159,7 +171,10 @@ func TestMetricInMemRepo_Set(t *testing.T) {
 			tests := []testCase[float64]{
 				{
 					name: "Set float64 metric",
-					r:    MetricInMemRepo[float64]{storage: make(StorageState[float64])},
+					r: MetricInMemRepo[float64]{
+						storage: make(StorageState[float64]),
+						mu:      &sync.RWMutex{},
+					},
 					args: args[float64]{name: "metric1", value: 10.5},
 				},
 			}
@@ -207,12 +222,16 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 						storage: StorageState[int64]{
 							"metric1": {ID: "metric1", Value: 10},
 						},
+						mu: &sync.RWMutex{},
 					},
 					args: args[int64]{name: "metric1", delta: 5},
 				},
 				{
 					name: "Update non-existing int64 metric",
-					r:    MetricInMemRepo[int64]{storage: make(StorageState[int64])},
+					r: MetricInMemRepo[int64]{
+						storage: make(StorageState[int64]),
+						mu:      &sync.RWMutex{},
+					},
 					args: args[int64]{name: "metric2", delta: 7},
 				},
 			}
@@ -250,12 +269,16 @@ func TestMetricInMemRepo_Update(t *testing.T) {
 						storage: StorageState[float64]{
 							"metric1": {ID: "metric1", Value: 10.5},
 						},
+						mu: &sync.RWMutex{},
 					},
 					args: args[float64]{name: "metric1", delta: 5.5},
 				},
 				{
 					name: "Update non-existing float64 metric",
-					r:    MetricInMemRepo[float64]{storage: make(StorageState[float64])},
+					r: MetricInMemRepo[float64]{
+						storage: make(StorageState[float64]),
+						mu:      &sync.RWMutex{},
+					},
 					args: args[float64]{name: "metric2", delta: 7.3},
 				},
 			}
@@ -300,16 +323,22 @@ func TestNewMetricInMemRepo(t *testing.T) {
 				{
 					name:  "Create new int64 MetricInMemRepo",
 					state: nil,
-					want:  &MetricInMemRepo[int64]{storage: make(StorageState[int64])},
+					want: &MetricInMemRepo[int64]{
+						storage: make(StorageState[int64]),
+						mu:      &sync.RWMutex{},
+					},
 				},
 				{
 					name: "Create new int64 MetricInMemRepo with initial state",
 					state: StorageState[int64]{
 						"metric1": {ID: "metric1", Value: 10},
 					},
-					want: &MetricInMemRepo[int64]{storage: StorageState[int64]{
-						"metric1": {ID: "metric1", Value: 10},
-					}},
+					want: &MetricInMemRepo[int64]{
+						storage: StorageState[int64]{
+							"metric1": {ID: "metric1", Value: 10},
+						},
+						mu: &sync.RWMutex{},
+					},
 				},
 			}
 
@@ -317,7 +346,7 @@ func TestNewMetricInMemRepo(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						repo := NewMetricInMemRepo[int64](tt.state)
+						repo := NewMetricInMemRepo(tt.state)
 						assert.Equal(t, *tt.want, *repo)
 					},
 				)
@@ -333,16 +362,22 @@ func TestNewMetricInMemRepo(t *testing.T) {
 				{
 					name:  "Create new float64 MetricInMemRepo",
 					state: nil,
-					want:  &MetricInMemRepo[float64]{storage: make(StorageState[float64])},
+					want: &MetricInMemRepo[float64]{
+						storage: make(StorageState[float64]),
+						mu:      &sync.RWMutex{},
+					},
 				},
 				{
 					name: "Create new float64 MetricInMemRepo with initial state",
 					state: StorageState[float64]{
 						"metric1": {ID: "metric1", Value: 10.5},
 					},
-					want: &MetricInMemRepo[float64]{storage: StorageState[float64]{
-						"metric1": {ID: "metric1", Value: 10.5},
-					}},
+					want: &MetricInMemRepo[float64]{
+						storage: StorageState[float64]{
+							"metric1": {ID: "metric1", Value: 10.5},
+						},
+						mu: &sync.RWMutex{},
+					},
 				},
 			}
 
@@ -350,7 +385,7 @@ func TestNewMetricInMemRepo(t *testing.T) {
 				t.Run(
 					tt.name, func(t *testing.T) {
 						t.Parallel()
-						repo := NewMetricInMemRepo[float64](tt.state)
+						repo := NewMetricInMemRepo(tt.state)
 						assert.Equal(t, *tt.want, *repo)
 					},
 				)
@@ -380,6 +415,7 @@ func TestMetricInMemRepo_List(t *testing.T) {
 							"metric1": {ID: "metric1", Value: 10},
 							"metric2": {ID: "metric2", Value: 20},
 						},
+						mu: &sync.RWMutex{},
 					},
 					want: []model.Metrics[int64]{
 						{ID: "metric1", Value: 10},
@@ -388,7 +424,10 @@ func TestMetricInMemRepo_List(t *testing.T) {
 				},
 				{
 					name: "List from empty int64 repo",
-					r:    MetricInMemRepo[int64]{storage: make(StorageState[int64])},
+					r: MetricInMemRepo[int64]{
+						storage: make(StorageState[int64]),
+						mu:      &sync.RWMutex{},
+					},
 					want: []model.Metrics[int64]{},
 				},
 			}
@@ -417,6 +456,7 @@ func TestMetricInMemRepo_List(t *testing.T) {
 							"metric1": {ID: "metric1", Value: 10.5},
 							"metric2": {ID: "metric2", Value: 20.3},
 						},
+						mu: &sync.RWMutex{},
 					},
 					want: []model.Metrics[float64]{
 						{ID: "metric1", Value: 10.5},
@@ -425,7 +465,10 @@ func TestMetricInMemRepo_List(t *testing.T) {
 				},
 				{
 					name: "List from empty float64 repo",
-					r:    MetricInMemRepo[float64]{storage: make(StorageState[float64])},
+					r: MetricInMemRepo[float64]{
+						storage: make(StorageState[float64]),
+						mu:      &sync.RWMutex{},
+					},
 					want: []model.Metrics[float64]{},
 				},
 			}
@@ -454,6 +497,7 @@ func TestMetricInMemRepo_GetMetrics(t *testing.T) {
 				"metric1": {ID: "metric1", Type: model.Counter, Value: 10},
 				"metric2": {ID: "metric2", Type: model.Counter, Value: 20},
 			},
+			mu: &sync.RWMutex{},
 		}
 
 		want := []*model.MetricsDto{
@@ -474,6 +518,7 @@ func TestMetricInMemRepo_GetMetrics(t *testing.T) {
 				"metric1": {ID: "metric1", Type: model.Gauge, Value: 10.5},
 				"metric2": {ID: "metric2", Type: model.Gauge, Value: 20.3},
 			},
+			mu: &sync.RWMutex{},
 		}
 
 		want := []*model.MetricsDto{

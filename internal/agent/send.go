@@ -8,13 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
 	"slices"
-	"syscall"
-	"time"
 
 	"github.com/yogenyslav/ya-metrics/internal/agent/collector"
 	"github.com/yogenyslav/ya-metrics/internal/model"
@@ -22,38 +17,6 @@ import (
 	"github.com/yogenyslav/ya-metrics/pkg/retry"
 	"golang.org/x/sync/errgroup"
 )
-
-// Start begins the metric collection and reporting process.
-func (a *Agent) Start() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	coll := collector.NewCollector(a.cfg.PollIntervalSec, a.l)
-	coll.Collect(ctx)
-
-	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(a.cfg.ReportIntervalSec))
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				err := a.sendAllMetrics(ctx, coll)
-				if err != nil {
-					slog.Error("failed to send metrics", "error", err)
-				}
-			}
-		}
-	}()
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-
-	return nil
-}
 
 func (a *Agent) encodeMetrics(metrics []*model.MetricsDto, compressionType string) ([]byte, error) {
 	body, err := json.Marshal(metrics)

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -43,10 +46,21 @@ func run() error {
 		return errs.Wrap(err, "create server")
 	}
 
-	err = srv.Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err = srv.Start(ctx)
 	if err != nil {
 		return errs.Wrap(err, "start server")
 	}
+	defer srv.Shutdown()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+	<-stop
+	signal.Stop(stop)
+
+	cancel()
 
 	return nil
 }

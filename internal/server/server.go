@@ -4,14 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/yogenyslav/ya-metrics/internal/config"
 	"github.com/yogenyslav/ya-metrics/internal/server/audit"
 	"github.com/yogenyslav/ya-metrics/internal/server/handler"
@@ -22,40 +19,17 @@ import (
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
-// Dumper is an interface for metrics dumping.
-type Dumper interface {
-	middleware.Dumper
-	Start(
-		ctx context.Context,
-		gaugeRepo repository.Repo,
-		counterRepo repository.Repo,
-		newTicker repository.TickerFactory,
-		onTick func(context.Context, repository.Repo, repository.Repo) error,
-	)
-}
-
-type ticker struct {
-	*time.Ticker
-}
-
-// C implements Ticker for dumper.
-func (t *ticker) C() <-chan time.Time {
-	return t.Ticker.C
-}
-
 // Server serves HTTP requests.
 type Server struct {
-	router chi.Router
-	cfg    *config.Config
-	pg     database.TxDB
-	dumper Dumper
+	router         chi.Router
+	cfg            *config.Config
+	pg             database.TxDB
+	dumper         middleware.Dumper
+	dumpOnShutdown func()
 }
 
 // NewServer creates new HTTP server.
-func NewServer(
-	cfg *config.Config,
-	l *zerolog.Logger,
-) (*Server, error) {
+func NewServer(cfg *config.Config, l *zerolog.Logger) (*Server, error) {
 	router := chi.NewRouter()
 	router.Use(
 		middleware.WithLogging(l),
@@ -81,18 +55,14 @@ func NewServer(
 			return nil, errs.Wrap(err, "run migrations")
 		}
 	case cfg.Dump.FileStoragePath != "":
-		dumper := repository.NewDumper(cfg.Dump.FileStoragePath, cfg.Dump.StoreInterval)
-		srv.dumper = dumper
+		srv.dumper = repository.NewDumper(cfg.Dump.FileStoragePath)
 	}
 
 	return srv, nil
 }
 
 // Start starts the HTTP server.
-func (s *Server) Start() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func (s *Server) Start(ctx context.Context) error {
 	var (
 		gaugeRepo   service.GaugeRepo
 		counterRepo service.CounterRepo
@@ -105,8 +75,6 @@ func (s *Server) Start() error {
 			return errs.Wrap(err, "init repositories")
 		}
 	} else {
-		defer s.pg.Close()
-
 		gaugeRepo = repository.NewMetricPostgresRepo[float64](s.pg)
 		counterRepo = repository.NewMetricPostgresRepo[int64](s.pg)
 	}
@@ -120,16 +88,12 @@ func (s *Server) Start() error {
 
 	go s.listen()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
-	<-stop
-
 	return nil
 }
 
 func (s *Server) listen() {
 	if err := http.ListenAndServe(s.cfg.Server.Addr, s.router); err != nil {
-		panic(err)
+		log.Err(err).Msg("failed serving HTTP")
 	}
 }
 
@@ -161,13 +125,27 @@ func (s *Server) initRepos(ctx context.Context) (service.GaugeRepo, service.Coun
 			return nil, nil, errors.New("counter repo does not implement repository.Repo")
 		}
 
-		s.dumper.Start(ctx, dumpingGaugeRepo, dumpingCounterRepo, func(d time.Duration) repository.Ticker {
-			return &ticker{time.NewTicker(d)}
-		}, s.dumper.Dump)
+		s.Dumping(ctx, s.dumper, defaultTickerFactory, dumpingGaugeRepo, dumpingCounterRepo)
+		s.dumpOnShutdown = func() {
+			err := s.dumper.Dump(context.Background(), gaugeRepo, counterRepo)
+			if err != nil {
+				log.Warn().Err(err).Msg("failed to dump data on shutdown")
+			} else {
+				log.Info().Msg("successfuly dumped data on shutdown")
+			}
+		}
 		s.router.Use(
 			middleware.WithFileDumper(s.dumper, s.cfg.Dump.StoreInterval, dumpingGaugeRepo, dumpingCounterRepo),
 		)
 	}
 
 	return gaugeRepo, counterRepo, nil
+}
+
+// Shutdown performs server shutdown.
+func (s *Server) Shutdown() {
+	if s.pg != nil {
+		s.pg.Close()
+	}
+	s.dumpOnShutdown()
 }
