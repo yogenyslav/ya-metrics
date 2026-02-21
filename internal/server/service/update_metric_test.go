@@ -10,6 +10,7 @@ import (
 	"github.com/yogenyslav/ya-metrics/pkg"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 	"github.com/yogenyslav/ya-metrics/tests/mocks"
+	"go.uber.org/mock/gomock"
 )
 
 func TestService_UpdateMetric(t *testing.T) {
@@ -96,10 +97,7 @@ func TestService_UpdateMetric(t *testing.T) {
 				gr := &mocks.MockGaugeRepo{}
 				cr := &mocks.MockCounterRepo{}
 
-				s := Service{
-					gr: gr,
-					cr: cr,
-				}
+				s := NewService(gr, cr, nil)
 
 				switch tt.args.req.Type {
 				case model.Gauge:
@@ -139,4 +137,94 @@ func TestService_UpdateMetric(t *testing.T) {
 			},
 		)
 	}
+}
+
+func TestService_UpdateMetricsBatch(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Update batch, success", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		gr := new(mocks.MockGaugeRepo)
+		cr := new(mocks.MockCounterRepo)
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(t))
+
+		s := NewService(gr, cr, uow)
+		metrics := []*model.MetricsDto{
+			{
+				ID:    "gauge_metric",
+				Type:  model.Gauge,
+				Value: pkg.Ptr(123.45),
+			},
+			{
+				ID:    "counter_metric",
+				Type:  model.Counter,
+				Delta: pkg.Ptr(int64(10)),
+			},
+		}
+
+		uow.EXPECT().
+			WithTx(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			})
+
+		gr.On("Set", mock.Anything, &model.Metrics[float64]{
+			ID:    metrics[0].ID,
+			Type:  model.Gauge,
+			Value: *metrics[0].Value,
+		}).Return(nil)
+		cr.On("Update", mock.Anything, &model.Metrics[int64]{
+			ID:    metrics[1].ID,
+			Type:  model.Counter,
+			Value: *metrics[1].Delta,
+		}).Return(nil)
+
+		err := s.UpdateMetricsBatch(ctx, metrics)
+		require.NoError(t, err)
+	})
+
+	t.Run("Update batch, error in one metric", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		gr := new(mocks.MockGaugeRepo)
+		cr := new(mocks.MockCounterRepo)
+		uow := mocks.NewMockUnitOfWork(gomock.NewController(t))
+
+		s := NewService(gr, cr, uow)
+		metrics := []*model.MetricsDto{
+			{
+				ID:    "gauge_metric",
+				Type:  model.Gauge,
+				Value: pkg.Ptr(123.45),
+			},
+			{
+				ID:    "counter_metric",
+				Type:  model.Counter,
+				Delta: pkg.Ptr(int64(10)),
+			},
+		}
+
+		uow.EXPECT().
+			WithTx(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(context.Context) error) error {
+				return fn(ctx)
+			})
+
+		gr.On("Set", mock.Anything, &model.Metrics[float64]{
+			ID:    metrics[0].ID,
+			Type:  model.Gauge,
+			Value: *metrics[0].Value,
+		}).Return(nil)
+		cr.On("Update", mock.Anything, &model.Metrics[int64]{
+			ID:    metrics[1].ID,
+			Type:  model.Counter,
+			Value: *metrics[1].Delta,
+		}).Return(errs.ErrInvalidMetricValue)
+
+		err := s.UpdateMetricsBatch(ctx, metrics)
+		require.Error(t, err)
+	})
 }

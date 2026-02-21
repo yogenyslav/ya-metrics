@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
@@ -55,6 +56,7 @@ func RestoreMetrics(
 // MetricInMemRepo is an in-memory repository for metrics.
 type MetricInMemRepo[T int64 | float64] struct {
 	storage StorageState[T]
+	mu      *sync.RWMutex
 }
 
 // NewMetricInMemRepo creates a new instance of MetricInMemRepo.
@@ -68,21 +70,26 @@ func NewMetricInMemRepo[T int64 | float64](state StorageState[T]) *MetricInMemRe
 
 	return &MetricInMemRepo[T]{
 		storage: storage,
+		mu:      &sync.RWMutex{},
 	}
 }
 
 // GetMetrics returns all metrics in MetricsDto format.
 func (r *MetricInMemRepo[T]) GetMetrics(_ context.Context) ([]*model.MetricsDto, error) {
+	r.mu.RLock()
 	metrics := make([]*model.MetricsDto, 0, len(r.storage))
 	for _, metric := range r.storage {
 		metrics = append(metrics, metric.ToDto())
 	}
+	r.mu.RUnlock()
 	return metrics, nil
 }
 
 // Get returns the value of a metric by its name and a bool flag to check if it exists.
 func (r *MetricInMemRepo[T]) Get(_ context.Context, metricName, _ string) (*model.Metrics[T], error) {
+	r.mu.RLock()
 	value, exists := r.storage[metricName]
+	r.mu.RUnlock()
 	if !exists {
 		return nil, errors.New("value not found")
 	}
@@ -91,29 +98,35 @@ func (r *MetricInMemRepo[T]) Get(_ context.Context, metricName, _ string) (*mode
 
 // Set sets the value of a metric by its name.
 func (r *MetricInMemRepo[T]) Set(_ context.Context, m *model.Metrics[T]) error {
+	r.mu.Lock()
 	if metric, ok := r.storage[m.ID]; ok {
 		metric.Value = m.Value
 	} else {
 		r.storage[m.ID] = m
 	}
+	r.mu.Unlock()
 	return nil
 }
 
 // Update updates the value of a metric by adding the delta to the current value.
 func (r *MetricInMemRepo[T]) Update(_ context.Context, m *model.Metrics[T]) error {
+	r.mu.Lock()
 	if metric, exists := r.storage[m.ID]; exists {
 		metric.Value += m.Value
 	} else {
 		r.storage[m.ID] = m
 	}
+	r.mu.Unlock()
 	return nil
 }
 
 // List returns a list of all metrics in the repository.
 func (r *MetricInMemRepo[T]) List(_ context.Context) ([]model.Metrics[T], error) {
+	r.mu.RLock()
 	metrics := make([]model.Metrics[T], 0, len(r.storage))
 	for _, metric := range r.storage {
 		metrics = append(metrics, *metric)
 	}
+	r.mu.RUnlock()
 	return metrics, nil
 }

@@ -4,55 +4,26 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/errs"
 )
 
+// Repo is an interface for repositories that can get metrics.
 type Repo interface {
 	GetMetrics(ctx context.Context) ([]*model.MetricsDto, error)
 }
 
 // fileDumper is a struct to dump data to file.
 type fileDumper struct {
-	filePath    string
-	intervalSec int
+	filePath string
 }
 
 // NewDumper creates a new instance of fileDumper.
-func NewDumper(filePath string, intervalSec int) *fileDumper {
+func NewDumper(filePath string) *fileDumper {
 	return &fileDumper{
-		filePath:    filePath,
-		intervalSec: intervalSec,
+		filePath: filePath,
 	}
-}
-
-// Start the dumping process.
-func (d *fileDumper) Start(ctx context.Context, gaugeRepo Repo, counterRepo Repo) {
-	if d.intervalSec <= 0 {
-		return
-	}
-
-	go func() {
-		var err error
-
-		ticker := time.NewTicker(time.Duration(d.intervalSec) * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				err = d.Dump(ctx, gaugeRepo, counterRepo)
-				if err != nil {
-					log.Ctx(ctx).Err(errs.Wrap(err)).Msg("dump metrics to file")
-				}
-			}
-		}
-	}()
 }
 
 // Dump data to file.

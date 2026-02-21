@@ -65,8 +65,7 @@ func NewConfig() (*Config, error) {
 	auditFileFlag := flags.String("audit-file", "", "путь к файлу аудита")
 	auditURLFlag := flags.String("audit-url", "", "адрес сервиса аудита")
 
-	err := flags.Parse(os.Args[1:])
-	if err != nil {
+	if err := flags.Parse(os.Args[1:]); err != nil {
 		return nil, errs.Wrap(err, "parse flags")
 	}
 

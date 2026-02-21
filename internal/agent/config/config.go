@@ -39,8 +39,7 @@ func NewConfig() (*Config, error) {
 	secureKeyFlag := flags.String("k", "", "ключ для подписи сигнатуры сообщений")
 	rateLimitFlag := flags.Int("l", 1, "максимальное число одновременных запросов к серверу")
 
-	err := flags.Parse(os.Args[1:])
-	if err != nil {
+	if err := flags.Parse(os.Args[1:]); err != nil {
 		return nil, errs.Wrap(err, "parse flags")
 	}
 

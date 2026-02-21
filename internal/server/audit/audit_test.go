@@ -111,3 +111,40 @@ func Test_serviceSource_Log(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 }
+
+func TestAudit_LogMetrics(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Log metrics to all sources, no errors", func(t *testing.T) {
+		t.Parallel()
+
+		recorder := httptest.NewRecorder()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("OK"))
+		}))
+		defer server.Close()
+
+		cfg := &config.AuditConfig{
+			File: t.TempDir() + "/test_audit.log",
+			URL:  server.URL,
+		}
+		audit := New(cfg)
+
+		err := audit.LogMetrics(context.Background(), []string{"metric1", "metric2"}, "127.0.0.1")
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("Log metrics with file source error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := &config.AuditConfig{
+			File: "///",
+		}
+		audit := New(cfg)
+
+		err := audit.LogMetrics(context.Background(), []string{"metric1", "metric2"}, "127.0.0.1")
+		assert.Error(t, err)
+	})
+}

@@ -11,17 +11,23 @@ import (
 func (s *Service) UpdateMetric(ctx context.Context, req *model.MetricsDto) error {
 	switch req.Type {
 	case model.Counter:
-		return s.cr.Update(ctx, &model.Metrics[int64]{
-			ID:    req.ID,
-			Type:  model.Counter,
-			Value: *req.Delta,
-		})
+		m := s.counterPool.Get()
+		defer s.counterPool.Put(m)
+
+		m.ID = req.ID
+		m.Type = model.Counter
+		m.Value = *req.Delta
+
+		return s.cr.Update(ctx, m)
 	case model.Gauge:
-		return s.gr.Set(ctx, &model.Metrics[float64]{
-			ID:    req.ID,
-			Type:  model.Gauge,
-			Value: *req.Value,
-		})
+		m := s.gaugePool.Get()
+		defer s.gaugePool.Put(m)
+
+		m.ID = req.ID
+		m.Type = model.Gauge
+		m.Value = *req.Value
+
+		return s.gr.Set(ctx, m)
 	}
 	return errs.Wrap(errs.ErrInvalidMetricType)
 }

@@ -12,6 +12,8 @@ import (
 )
 
 // UtilizationMetrics holds system utilization metrics.
+//
+// generate:reset
 type UtilizationMetrics struct {
 	TotalMemory    *model.Metrics[float64]
 	FreeMemory     *model.Metrics[float64]

@@ -5,6 +5,7 @@ import (
 
 	"github.com/yogenyslav/ya-metrics/internal/model"
 	"github.com/yogenyslav/ya-metrics/pkg/database"
+	"github.com/yogenyslav/ya-metrics/pkg/pool"
 )
 
 type metricRepo[T int64 | float64] interface {
@@ -26,9 +27,11 @@ type CounterRepo interface {
 
 // Service provides metric-related operations.
 type Service struct {
-	gr  GaugeRepo
-	cr  CounterRepo
-	uow database.UnitOfWork
+	gr          GaugeRepo
+	cr          CounterRepo
+	uow         database.UnitOfWork
+	counterPool *pool.Pool[*model.Metrics[int64]]
+	gaugePool   *pool.Pool[*model.Metrics[float64]]
 }
 
 // NewService creates a new Service instance.
@@ -37,5 +40,11 @@ func NewService(gr GaugeRepo, cr CounterRepo, uow database.UnitOfWork) *Service 
 		gr:  gr,
 		cr:  cr,
 		uow: uow,
+		counterPool: pool.New(func() *model.Metrics[int64] {
+			return &model.Metrics[int64]{}
+		}),
+		gaugePool: pool.New(func() *model.Metrics[float64] {
+			return &model.Metrics[float64]{}
+		}),
 	}
 }

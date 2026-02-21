@@ -17,13 +17,11 @@ func TestNewDumper(t *testing.T) {
 	t.Parallel()
 
 	filePath := "dump.json"
-	intervalSec := 10
 	want := &fileDumper{
-		filePath:    filePath,
-		intervalSec: intervalSec,
+		filePath: filePath,
 	}
 
-	dumper := NewDumper("dump.json", 10)
+	dumper := NewDumper("dump.json")
 	assert.Equal(t, want, dumper)
 }
 
@@ -59,7 +57,7 @@ func Test_fileDumper_Dump(t *testing.T) {
 	t.Parallel()
 
 	filePath := t.TempDir() + "/metrics.json"
-	dumper := NewDumper(filePath, 0)
+	dumper := NewDumper(filePath)
 
 	gaugeRepo := new(mocks.MockGaugeRepo)
 	counterRepo := new(mocks.MockCounterRepo)
